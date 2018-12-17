@@ -10,3 +10,6 @@ ldacinfo:ldacinfo.c
 clean:
 	rm -f ldacenc.o ldaclib.o ldacBT.o ldacenc ldacinfo
 
+test:
+	./ldacinfo test.ldac
+
