@@ -45,7 +45,45 @@ int dump_ldac_header(unsigned char *pdata, int pos)
     printf("  FRAMESTAT  %02X\n", read_bits(pdata, pos + 22, 2));
     printf("\n");
 
-    return 24;
+    return pos + 24;
+}
+
+int dump_ldac_bandinfo(unsigned char *pdata, int pos)
+{
+    printf("BANDINFO\n");
+    printf("  NBAND      %02X\n", read_bits(pdata, pos + 0, 4));
+    printf("  FLAG       %02X\n", read_bits(pdata, pos + 4, 1));
+    printf("\n");
+
+    return pos + 5;
+}
+
+int dump_ldac_gradient(unsigned char *pdata, int pos)
+{
+    int new_pos = pos;
+    int gradmode = read_bits(pdata, pos + 0, 2);
+
+    printf("GRADIENT\n");
+        printf("  GRADMODE   %02X\n", read_bits(pdata, pos + 0, 2));
+    if (gradmode == 0) {
+        printf("  GRADQU0    %02X\n", read_bits(pdata, pos +  2, 6));
+        printf("  GRADQU0    %02X\n", read_bits(pdata, pos +  8, 6));
+        printf("  GRADQS     %02X\n", read_bits(pdata, pos + 14, 5));
+        printf("  GRADQS     %02X\n", read_bits(pdata, pos + 19, 5));
+        printf("  NADJQU     %02X\n", read_bits(pdata, pos + 24, 5));
+        new_pos = pos + 29;
+    } else if (gradmode == 1) {
+        printf("  GRADQU1    %02X\n", read_bits(pdata, pos +  2, 5));
+        printf("  GRADQS     %02X\n", read_bits(pdata, pos +  7, 5));
+        printf("  NADJQU     %02X\n", read_bits(pdata, pos + 12, 5));
+        new_pos = pos + 17;
+    } else {
+        printf("grad mode error\n");
+        return -1;
+    }
+    printf("\n");
+
+    return new_pos;
 }
 
 int main(int argc, char *argv[])
@@ -62,6 +100,8 @@ int main(int argc, char *argv[])
     fread(ldac, 660, 1, infp);
 
     pos = dump_ldac_header(ldac, 0);
+    pos = dump_ldac_bandinfo(ldac, pos);
+    pos = dump_ldac_gradient(ldac, pos);
 
     return 0;
 }
