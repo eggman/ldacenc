@@ -61,18 +61,18 @@ int dump_ldac_bandinfo(unsigned char *pdata, int pos)
 int dump_ldac_gradient(unsigned char *pdata, int pos)
 {
     int new_pos = pos;
-    int gradmode = read_bits(pdata, pos + 0, 2);
+    int grad_mode = read_bits(pdata, pos + 0, 2);
 
     printf("GRADIENT\n");
         printf("  GRADMODE   %02X\n", read_bits(pdata, pos + 0, 2));
-    if (gradmode == 0) {
+    if (grad_mode == 0) {
         printf("  GRADQU0    %02X\n", read_bits(pdata, pos +  2, 6));
         printf("  GRADQU0    %02X\n", read_bits(pdata, pos +  8, 6));
         printf("  GRADQS     %02X\n", read_bits(pdata, pos + 14, 5));
         printf("  GRADQS     %02X\n", read_bits(pdata, pos + 19, 5));
         printf("  NADJQU     %02X\n", read_bits(pdata, pos + 24, 5));
         new_pos = pos + 29;
-    } else if (gradmode == 1) {
+    } else if (grad_mode == 1 || grad_mode == 2 || grad_mode == 3) {
         printf("  GRADQU1    %02X\n", read_bits(pdata, pos +  2, 5));
         printf("  GRADQS     %02X\n", read_bits(pdata, pos +  7, 5));
         printf("  NADJQU     %02X\n", read_bits(pdata, pos + 12, 5));
@@ -84,6 +84,23 @@ int dump_ldac_gradient(unsigned char *pdata, int pos)
     printf("\n");
 
     return new_pos;
+}
+
+int dump_ldac_scalefactor(unsigned char *pdata, int pos)
+{
+    int sfc_bitlen;
+    printf("SCALEFACTOR\n");
+    printf("  SFCMODE    %02X\n", read_bits(pdata, pos +  0, 1));
+    printf("  SFCBLEN    %02X\n", read_bits(pdata, pos +  1, 2));
+    sfc_bitlen = 3 + read_bits(pdata, pos +  1, 2);
+    printf("  IDSF       %02X\n", read_bits(pdata, pos +  3, 5));
+    printf("  SFCWTBL    %02X\n", read_bits(pdata, pos +  8, 3));
+
+    printf("  VAL0       %02X\n", read_bits(pdata, pos + 11, sfc_bitlen));
+
+    // todo decode huffman
+
+    return pos + 11 + sfc_bitlen;
 }
 
 int main(int argc, char *argv[])
@@ -102,6 +119,7 @@ int main(int argc, char *argv[])
     pos = dump_ldac_header(ldac, 0);
     pos = dump_ldac_bandinfo(ldac, pos);
     pos = dump_ldac_gradient(ldac, pos);
+    pos = dump_ldac_scalefactor(ldac, pos);
 
     return 0;
 }
