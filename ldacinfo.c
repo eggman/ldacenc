@@ -130,25 +130,19 @@ void dump_gradient_ldac(AB *p_ab, unsigned char *pdata, int *p_loc)
     printf("\n");
 }
 
-int decode_huffman(const CODES c, unsigned char *pdata, int start_pos)
+int decode_huffman(const HCENC c, unsigned char *pdata, int start_pos)
 {
     int pos = start_pos;
     int tmp = 0;
     int ret;
 
-    /* pre-read  */
-    if (c.codes_min_bits > 1) {
-        tmp = read_bits(pdata, pos, c.codes_min_bits - 1);
-        pos += c.codes_min_bits - 1;
-    }
-
     /* check codes */
-    for (int nbits = c.codes_min_bits; nbits <= c.codes_max_bits; nbits++) {
+    for (int nbits = 1; nbits <= 8; nbits++) {
         tmp = tmp << 1;
         tmp += read_bit(pdata, pos);
         pos++;
         for (int i = 0; i < c.ncodes; i++) {
-            if (c.p_tbl[i].len == nbits && c.p_tbl[i].code == tmp) {
+            if (c.p_tbl[i].len == nbits && c.p_tbl[i].word == tmp) {
                 ret = i;
                 goto found;
             }
@@ -161,7 +155,7 @@ found:
     return ret;
 }
 
-int dump_ldac_sfhuffman(AC *p_ac, unsigned char *pdata, int pos, const CODES c)
+int dump_ldac_sfhuffman(AC *p_ac, unsigned char *pdata, int pos, const HCENC c)
 {
     int p, count = 1, idx;
     int dif[LDAC_MAXNQUS];
@@ -236,7 +230,7 @@ void dump_scale_factor_0_ldac(AC *p_ac, unsigned char *pdata, int *p_loc)
     printf("  VAL0       %02X\n", read_bits(pdata, *p_loc + 10, sfc_bitlen));
     p_ac->a_idsf[0] = read_bits(pdata, *p_loc + 10, sfc_bitlen) + sfc_offset;
 
-    hc_len = dump_ldac_sfhuffman(p_ac, pdata, *p_loc + 10 + sfc_bitlen, codes0);
+    hc_len = dump_ldac_sfhuffman(p_ac, pdata, *p_loc + 10 + sfc_bitlen, ga_hcenc_sf0_ldac[0]);
     *p_loc += 10 + sfc_bitlen + hc_len;
 }
 
@@ -247,7 +241,7 @@ void dump_scale_factor_2_ldac(AC *p_ac, unsigned char *pdata, int *p_loc)
     printf("  SFCBLEN    %02X\n", read_bits(pdata, *p_loc +  0, 2));
     sfc_bitlen = 2 + read_bits(pdata, *p_loc +  0, 2);
 
-    hc_len = dump_ldac_sfhuffman(p_ac, pdata, *p_loc + 2, codes1);
+    hc_len = dump_ldac_sfhuffman(p_ac, pdata, *p_loc + 2, ga_hcenc_sf1_ldac[1]);
     *p_loc += 2 + hc_len;
 }
 
