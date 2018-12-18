@@ -8,13 +8,7 @@
 #include <stdio.h>
 #include "table.h"
 
-static int g_sfc_weight;
-static int g_nadjqus;
-int g_a_idsf[LDAC_MAXNQUS];
-int g_a_grad[LDAC_MAXNQUS];
-int g_a_addwl[LDAC_MAXNQUS];
-int g_a_idwl1[LDAC_MAXNQUS];
-int g_a_idwl2[LDAC_MAXNQUS];
+AC g_ac0, g_ac1;
 AB g_ab;
 
 int read_bit(unsigned char *pdata, int pos)
@@ -81,7 +75,6 @@ void dump_gradient_ldac(AB *p_ab, unsigned char *pdata, int *p_loc)
         printf("  GRADOS_L   %02X\n", read_bits(pdata, *p_loc + 14, 5));
         printf("  GRADOS_H   %02X\n", read_bits(pdata, *p_loc + 19, 5));
         printf("  NADJQU     %02X\n", read_bits(pdata, *p_loc + 24, 5));
-        g_nadjqus = read_bits(pdata, *p_loc + 24, 5);
         p_ab->nadjqus = read_bits(pdata, *p_loc + 24, 5);
 
         int hqu = 24;
@@ -91,7 +84,7 @@ void dump_gradient_ldac(AB *p_ab, unsigned char *pdata, int *p_loc)
         int grad_os_l = read_bits(pdata, *p_loc + 14, 5);
         int grad_os_h = read_bits(pdata, *p_loc + 19, 5);
         int tmp = grad_qu_h - grad_qu_l;
-        int *p_grad = g_a_grad;
+        int *p_grad = p_ab->a_grad;
         const unsigned char *p_t;
 
         /* Calculate Gradient Curve */
@@ -130,7 +123,6 @@ void dump_gradient_ldac(AB *p_ab, unsigned char *pdata, int *p_loc)
         printf("  GRADQU1    %02X\n", read_bits(pdata, *p_loc +  2, 5));
         printf("  GRADOS     %02X\n", read_bits(pdata, *p_loc +  7, 5));
         printf("  NADJQU     %02X\n", read_bits(pdata, *p_loc + 12, 5));
-        g_nadjqus = read_bits(pdata, *p_loc + 12, 5);
         p_ab->nadjqus = read_bits(pdata, *p_loc + 12, 5);
         *p_loc += 17;
     }
@@ -164,7 +156,7 @@ found:
     return i;
 }
 
-int dump_ldac_sfhuffman(unsigned char *pdata, int pos, const CODES c)
+int dump_ldac_sfhuffman(AC *p_ac, unsigned char *pdata, int pos, const CODES c)
 {
     int p, count, idx;
     int dif[LDAC_MAXNQUS];
@@ -189,47 +181,50 @@ int dump_ldac_sfhuffman(unsigned char *pdata, int pos, const CODES c)
 
     //todo support scale_facotor_2
     //dump idsf
-    int val0 = g_a_idsf[0];
+    int val0 = p_ac->a_idsf[0];
     int val1;
     const unsigned char *p_tbl;
 
-    p_tbl = gaa_sfcwgt_ldac[g_sfc_weight];
-    g_a_idsf[0] = val0 - p_tbl[0];
+    p_tbl = gaa_sfcwgt_ldac[p_ac->sfc_weight];
+    p_ac->a_idsf[0] = val0 - p_tbl[0];
 
     for (int iqu = 1; iqu < 24; iqu++) {
         val1 = dif[iqu] + val0;
-        g_a_idsf[iqu] = val1 - p_tbl[iqu];
+        p_ac->a_idsf[iqu] = val1 - p_tbl[iqu];
         val0 = val1;
     }
 
     printf("  a_idsf    ");
     for (int i = 0; i < 24 /* LDAC_MAXNQUS */; i++) {
-        printf(" %02X", g_a_idsf[i]);
+        printf(" %02X", p_ac->a_idsf[i]);
     }
     printf("\n");
 
     return p - pos;
 }
 
-void dump_scale_factor_ldac(unsigned char *pdata, int *p_loc)
+void dump_scale_factor_ldac(AC *p_ac, unsigned char *pdata, int *p_loc)
 {
     int sfc_mode, sfc_bitlen, sfc_offset, hc_len;
     printf("SCALEFACTOR\n");
     printf("  SFCMODE    %02X\n", read_bits(pdata, *p_loc +  0, 1));
     sfc_mode = read_bits(pdata, *p_loc +  0, 1);
+    p_ac->sfc_mode = sfc_mode;
 
     if (sfc_mode == 0) {
         printf("  SFCBLEN    %02X\n", read_bits(pdata, *p_loc +  1, 2));
         sfc_bitlen = 3 + read_bits(pdata, *p_loc +  1, 2);
+        p_ac->sfc_bitlen = sfc_bitlen;
         printf("  IDSF       %02X\n", read_bits(pdata, *p_loc +  3, 5));
         sfc_offset = read_bits(pdata, *p_loc +  3, 5);
+        p_ac->sfc_offset = sfc_offset;
         printf("  SFCWTBL    %02X\n", read_bits(pdata, *p_loc +  8, 3));
-        g_sfc_weight = read_bits(pdata, *p_loc +  8, 3);
+        p_ac->sfc_weight = read_bits(pdata, *p_loc +  8, 3);
 
         printf("  VAL0       %02X\n", read_bits(pdata, *p_loc + 11, sfc_bitlen));
-        g_a_idsf[0] = read_bits(pdata, *p_loc + 11, sfc_bitlen) + sfc_offset;
+        p_ac->a_idsf[0] = read_bits(pdata, *p_loc + 11, sfc_bitlen) + sfc_offset;
 
-        hc_len = dump_ldac_sfhuffman(pdata, *p_loc + 11 + sfc_bitlen, codes0);
+        hc_len = dump_ldac_sfhuffman(p_ac, pdata, *p_loc + 11 + sfc_bitlen, codes0);
         *p_loc += 11 + sfc_bitlen + hc_len;
     } else {
         /* scale_factor 2 */
@@ -237,14 +232,14 @@ void dump_scale_factor_ldac(unsigned char *pdata, int *p_loc)
         sfc_bitlen = 2 + read_bits(pdata, *p_loc +  1, 2);
 
         /* decode huffman */
-        hc_len = dump_ldac_sfhuffman(pdata, *p_loc + 3, codes1);
+        hc_len = dump_ldac_sfhuffman(p_ac, pdata, *p_loc + 3, codes1);
         *p_loc += 3 + hc_len;
     }
 
     printf("\n");
 }
 
-void dump_spectrum_ldac(unsigned char *pdata, int *p_loc)
+void dump_spectrum_ldac(AC *p_ac, unsigned char *pdata, int *p_loc)
 {
     int i, iqu, idwl1, idwl2;
     int hqu = 24;
@@ -252,15 +247,14 @@ void dump_spectrum_ldac(unsigned char *pdata, int *p_loc)
     int isp;
     int lsp, hsp;
     int nsps, wl;
-    int *p_grad, *p_idsf, *p_addwl, *p_idwl1, *p_idwl2, *p_tmp;
+    int *p_grad, *p_idsf, *p_idwl1, *p_idwl2, *p_tmp;
 
     printf("SPECTRUM\n");
 
-    p_grad = g_a_grad;
-	p_idsf = g_a_idsf;
-	p_addwl = g_a_addwl;
-	p_idwl1 = g_a_idwl1;
-	p_idwl2 = g_a_idwl2;
+    p_grad = p_ac->p_ab->a_grad;
+    p_idsf = p_ac->a_idsf;
+    p_idwl1 = p_ac->a_idwl1;
+    p_idwl2 = p_ac->a_idwl2;
 
     /* grad_mode == 0 */
     for (iqu = 0; iqu < hqu; iqu++) {
@@ -289,8 +283,8 @@ void dump_spectrum_ldac(unsigned char *pdata, int *p_loc)
     printf("\n");
 
     /* adjust  */
-    int nadjqus = g_nadjqus;
-	p_tmp = g_a_idwl1;
+    int nadjqus = p_ac->p_ab->nadjqus;
+	p_tmp = p_ac->a_idwl1;
     for (iqu = 0; iqu < nqus; iqu++) {
         idwl1 = p_tmp[iqu];
         if (iqu < nadjqus) {
@@ -322,7 +316,7 @@ void dump_spectrum_ldac(unsigned char *pdata, int *p_loc)
         lsp = ga_isp_ldac[iqu];
         hsp = ga_isp_ldac[iqu+1];
         nsps = ga_nsps_ldac[iqu];
-        idwl1 = g_a_idwl1[iqu];
+        idwl1 = p_ac->a_idwl1[iqu];
         wl = ga_wl_ldac[idwl1];
 
         if (idwl1 == 1) {
@@ -361,7 +355,7 @@ void dump_spectrum_ldac(unsigned char *pdata, int *p_loc)
     printf("\n");
 }
 
-void dump_residual_ldac(unsigned char *pdata, int *p_loc)
+void dump_residual_ldac(AC *p_ac, unsigned char *pdata, int *p_loc)
 {
     int iqu, isp;
     int lsp, hsp;
@@ -369,7 +363,7 @@ void dump_residual_ldac(unsigned char *pdata, int *p_loc)
     int idwl2, wl;
     int *p_idwl2;
 
-    p_idwl2 = g_a_idwl2;
+    p_idwl2 = p_ac->a_idwl2;
 
     printf("RESIDUAL\n");
 
@@ -405,7 +399,16 @@ int main(int argc, char *argv[])
     unsigned char ldac[1024];
     FILE *infp;
     AB *p_ab;
+    AC *p_ac;
+
+    /* initialize little */
     p_ab = &g_ab;
+    p_ab->ap_ac[0] = &g_ac0;
+    p_ab->ap_ac[1] = &g_ac1;
+    p_ab->ap_ac[0]->ich = 0;
+    p_ab->ap_ac[0]->p_ab = p_ab;
+    p_ab->ap_ac[1]->ich = 1;
+    p_ab->ap_ac[1]->p_ab = p_ab;
 
     pos = 0;
     p_loc = &pos;
@@ -420,10 +423,13 @@ int main(int argc, char *argv[])
     dump_frame_header_ldac(ldac, p_loc);
     dump_band_info_ldac(p_ab, ldac, p_loc);
     dump_gradient_ldac(p_ab, ldac, p_loc);
-    dump_scale_factor_ldac(ldac, p_loc);
-    dump_spectrum_ldac(ldac, p_loc);
-    dump_residual_ldac(ldac, p_loc);
-    dump_scale_factor_ldac(ldac, p_loc);
+
+    p_ac = p_ab->ap_ac[0];
+    dump_scale_factor_ldac(p_ac, ldac, p_loc);
+    dump_spectrum_ldac(p_ac, ldac, p_loc);
+    dump_residual_ldac(p_ac, ldac, p_loc);
+    p_ac = p_ab->ap_ac[1];
+    dump_scale_factor_ldac(p_ac, ldac, p_loc);
 
     return 0;
 }
