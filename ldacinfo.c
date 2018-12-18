@@ -133,37 +133,48 @@ void dump_gradient_ldac(AB *p_ab, unsigned char *pdata, int *p_loc)
 int decode_huffman(const CODES c, unsigned char *pdata, int start_pos)
 {
     int pos = start_pos;
-    int tmp;
-    int i;
+    int tmp = 0;
+    int ret;
 
-    /* read 1st bit */
-    tmp =  read_bit(pdata, pos);
+    /* pre-read  */
+    if (c.codes_min_bits > 1) {
+        tmp = read_bits(pdata, pos, c.codes_min_bits - 1);
+        pos += c.codes_min_bits - 1;
+    }
 
     /* check codes */
     for (int nbits = c.codes_min_bits; nbits <= c.codes_max_bits; nbits++) {
-        pos++;
         tmp = tmp << 1;
         tmp += read_bit(pdata, pos);
-        for (i=0; i < c.ncodes; i++) {
-            if (c.p_tbl[i].code == tmp) {
+        pos++;
+        for (int i = 0; i < c.ncodes; i++) {
+            if (c.p_tbl[i].len == nbits && c.p_tbl[i].code == tmp) {
+                ret = i;
                 goto found;
             }
         }
     }
-    puts("not found");
+    puts("huffman code not found");
     return -1;
 
 found:
-    return i;
+    return ret;
 }
 
 int dump_ldac_sfhuffman(AC *p_ac, unsigned char *pdata, int pos, const CODES c)
 {
-    int p, count, idx;
+    int p, count = 1, idx;
     int dif[LDAC_MAXNQUS];
 
     printf("  DIF       ");
-    for (p = pos, count = 1; count < p_ac->p_ab->nqus;) {
+
+    if (p_ac->sfc_mode == 1 && p_ac->ich != 0) {
+        count = 0;
+    } else {
+        count = 1;
+    }
+
+    for (p = pos; count < p_ac->p_ab->nqus;) {
         idx = decode_huffman(c, pdata, p);
         if (idx >= 0) {
             if (idx & (c.ncodes>>1)) {
