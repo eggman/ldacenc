@@ -37,61 +37,59 @@ int read_bits(unsigned char *pdata, int pos, int nbits)
     return tmp;
 }
 
-int dump_ldac_header(unsigned char *pdata, int pos)
+void dump_frame_header_ldac(unsigned char *pdata, int *p_loc)
 {
     int syncword;
 
-    syncword = read_bits(pdata, pos + 0, 8);
+    syncword = read_bits(pdata, *p_loc + 0, 8);
     if (syncword != 0xAA) {
         printf("not found syncword\n");
-        return -1;
+        return;
     }
 
     printf("HEADER\n");
     printf("  SYNCWORD   %02X\n", syncword);
-    printf("  SAMPLERATE %02X\n", read_bits(pdata, pos +  8, 3));
-    printf("  CHCONFIG   %02X\n", read_bits(pdata, pos + 11, 2));
-    printf("  FRAMELEN   %02X\n", read_bits(pdata, pos + 13, 9));
-    printf("  FRAMESTAT  %02X\n", read_bits(pdata, pos + 22, 2));
+    printf("  SAMPLERATE %02X\n", read_bits(pdata, *p_loc +  8, 3));
+    printf("  CHCONFIG   %02X\n", read_bits(pdata, *p_loc + 11, 2));
+    printf("  FRAMELEN   %02X\n", read_bits(pdata, *p_loc + 13, 9));
+    printf("  FRAMESTAT  %02X\n", read_bits(pdata, *p_loc + 22, 2));
     printf("\n");
 
-    return pos + 24;
+    *p_loc += 24;
 }
 
-int dump_band_info_ldac(AB *p_ab, unsigned char *pdata, int pos)
+void dump_band_info_ldac(AB *p_ab, unsigned char *pdata, int *p_loc)
 {
     printf("BANDINFO\n");
-    printf("  NBAND      %02X\n", read_bits(pdata, pos + 0, 4));
-    p_ab->nbands = 2 + read_bits(pdata, pos + 0, 4);
-    printf("  FLAG       %02X\n", read_bits(pdata, pos + 4, 1));
+    printf("  NBAND      %02X\n", read_bits(pdata, *p_loc + 0, 4));
+    p_ab->nbands = 2 + read_bits(pdata, *p_loc + 0, 4);
+    printf("  FLAG       %02X\n", read_bits(pdata, *p_loc + 4, 1));
     printf("\n");
 
-    return pos + 5;
+    *p_loc += 5;
 }
 
-int dump_gradient_ldac(AB *p_ab, unsigned char *pdata, int pos)
+void dump_gradient_ldac(AB *p_ab, unsigned char *pdata, int *p_loc)
 {
-    int new_pos = pos;
-    p_ab->grad_mode = read_bits(pdata, pos + 0, 2);
+    p_ab->grad_mode = read_bits(pdata, *p_loc + 0, 2);
 
     printf("GRADIENT\n");
-        printf("  GRADMODE   %02X\n", read_bits(pdata, pos + 0, 2));
+        printf("  GRADMODE   %02X\n", read_bits(pdata, *p_loc + 0, 2));
     if (p_ab->grad_mode == 0) {
-        printf("  GRADQU0_L  %02X\n", read_bits(pdata, pos +  2, 6));
-        printf("  GRADQU0_H  %02X\n", read_bits(pdata, pos +  8, 6));
-        printf("  GRADOS_L   %02X\n", read_bits(pdata, pos + 14, 5));
-        printf("  GRADOS_H   %02X\n", read_bits(pdata, pos + 19, 5));
-        printf("  NADJQU     %02X\n", read_bits(pdata, pos + 24, 5));
-        g_nadjqus = read_bits(pdata, pos + 24, 5);
-        p_ab->nadjqus = read_bits(pdata, pos + 24, 5);
-        new_pos = pos + 29;
+        printf("  GRADQU0_L  %02X\n", read_bits(pdata, *p_loc +  2, 6));
+        printf("  GRADQU0_H  %02X\n", read_bits(pdata, *p_loc +  8, 6));
+        printf("  GRADOS_L   %02X\n", read_bits(pdata, *p_loc + 14, 5));
+        printf("  GRADOS_H   %02X\n", read_bits(pdata, *p_loc + 19, 5));
+        printf("  NADJQU     %02X\n", read_bits(pdata, *p_loc + 24, 5));
+        g_nadjqus = read_bits(pdata, *p_loc + 24, 5);
+        p_ab->nadjqus = read_bits(pdata, *p_loc + 24, 5);
 
         int hqu = 24;
         int iqu;
-        int grad_qu_l = read_bits(pdata, pos +  2, 6);
-        int grad_qu_h = read_bits(pdata, pos +  8, 6) + 1;
-        int grad_os_l = read_bits(pdata, pos + 14, 5);
-        int grad_os_h = read_bits(pdata, pos + 19, 5);
+        int grad_qu_l = read_bits(pdata, *p_loc +  2, 6);
+        int grad_qu_h = read_bits(pdata, *p_loc +  8, 6) + 1;
+        int grad_os_l = read_bits(pdata, *p_loc + 14, 5);
+        int grad_os_h = read_bits(pdata, *p_loc + 19, 5);
         int tmp = grad_qu_h - grad_qu_l;
         int *p_grad = g_a_grad;
         const unsigned char *p_t;
@@ -126,18 +124,17 @@ int dump_gradient_ldac(AB *p_ab, unsigned char *pdata, int pos)
             printf(" %d", p_grad[iqu]);
         }
         printf("\n");
+        *p_loc += 29;
 
     } else {
-        printf("  GRADQU1    %02X\n", read_bits(pdata, pos +  2, 5));
-        printf("  GRADOS     %02X\n", read_bits(pdata, pos +  7, 5));
-        printf("  NADJQU     %02X\n", read_bits(pdata, pos + 12, 5));
-        g_nadjqus = read_bits(pdata, pos + 12, 5);
-        p_ab->nadjqus = read_bits(pdata, pos + 12, 5);
-        new_pos = pos + 17;
+        printf("  GRADQU1    %02X\n", read_bits(pdata, *p_loc +  2, 5));
+        printf("  GRADOS     %02X\n", read_bits(pdata, *p_loc +  7, 5));
+        printf("  NADJQU     %02X\n", read_bits(pdata, *p_loc + 12, 5));
+        g_nadjqus = read_bits(pdata, *p_loc + 12, 5);
+        p_ab->nadjqus = read_bits(pdata, *p_loc + 12, 5);
+        *p_loc += 17;
     }
     printf("\n");
-
-    return new_pos;
 }
 
 int decode_huffman(const CODES c, unsigned char *pdata, int start_pos)
@@ -214,42 +211,40 @@ int dump_ldac_sfhuffman(unsigned char *pdata, int pos, const CODES c)
     return p - pos;
 }
 
-int dump_ldac_scalefactor(unsigned char *pdata, int pos)
+void dump_scale_factor_ldac(unsigned char *pdata, int *p_loc)
 {
-    int new_pos, sfc_mode, sfc_bitlen, sfc_offset, hc_len;
+    int sfc_mode, sfc_bitlen, sfc_offset, hc_len;
     printf("SCALEFACTOR\n");
-    printf("  SFCMODE    %02X\n", read_bits(pdata, pos +  0, 1));
-    sfc_mode = read_bits(pdata, pos +  0, 1);
+    printf("  SFCMODE    %02X\n", read_bits(pdata, *p_loc +  0, 1));
+    sfc_mode = read_bits(pdata, *p_loc +  0, 1);
 
     if (sfc_mode == 0) {
-        printf("  SFCBLEN    %02X\n", read_bits(pdata, pos +  1, 2));
-        sfc_bitlen = 3 + read_bits(pdata, pos +  1, 2);
-        printf("  IDSF       %02X\n", read_bits(pdata, pos +  3, 5));
-        sfc_offset = read_bits(pdata, pos +  3, 5);
-        printf("  SFCWTBL    %02X\n", read_bits(pdata, pos +  8, 3));
-        g_sfc_weight = read_bits(pdata, pos +  8, 3);
+        printf("  SFCBLEN    %02X\n", read_bits(pdata, *p_loc +  1, 2));
+        sfc_bitlen = 3 + read_bits(pdata, *p_loc +  1, 2);
+        printf("  IDSF       %02X\n", read_bits(pdata, *p_loc +  3, 5));
+        sfc_offset = read_bits(pdata, *p_loc +  3, 5);
+        printf("  SFCWTBL    %02X\n", read_bits(pdata, *p_loc +  8, 3));
+        g_sfc_weight = read_bits(pdata, *p_loc +  8, 3);
 
-        printf("  VAL0       %02X\n", read_bits(pdata, pos + 11, sfc_bitlen));
-        g_a_idsf[0] = read_bits(pdata, pos + 11, sfc_bitlen) + sfc_offset;
+        printf("  VAL0       %02X\n", read_bits(pdata, *p_loc + 11, sfc_bitlen));
+        g_a_idsf[0] = read_bits(pdata, *p_loc + 11, sfc_bitlen) + sfc_offset;
 
-        hc_len = dump_ldac_sfhuffman(pdata, pos + 11 + sfc_bitlen, codes0);
-        new_pos = pos + 11 + sfc_bitlen + hc_len;
+        hc_len = dump_ldac_sfhuffman(pdata, *p_loc + 11 + sfc_bitlen, codes0);
+        *p_loc += 11 + sfc_bitlen + hc_len;
     } else {
         /* scale_factor 2 */
-        printf("  SFCBLEN    %02X\n", read_bits(pdata, pos +  1, 2));
-        sfc_bitlen = 2 + read_bits(pdata, pos +  1, 2);
+        printf("  SFCBLEN    %02X\n", read_bits(pdata, *p_loc +  1, 2));
+        sfc_bitlen = 2 + read_bits(pdata, *p_loc +  1, 2);
 
         /* decode huffman */
-        hc_len = dump_ldac_sfhuffman(pdata, pos + 3, codes1);
-        new_pos = 3 + hc_len;
+        hc_len = dump_ldac_sfhuffman(pdata, *p_loc + 3, codes1);
+        *p_loc += 3 + hc_len;
     }
 
     printf("\n");
-
-    return new_pos;
 }
 
-int dump_ldac_spectrum(unsigned char *pdata, int pos)
+void dump_spectrum_ldac(unsigned char *pdata, int *p_loc)
 {
     int i, iqu, idwl1, idwl2;
     int hqu = 24;
@@ -359,16 +354,14 @@ int dump_ldac_spectrum(unsigned char *pdata, int pos)
 
     printf(" coded spec");
     for (i = 0; i < nsp; i++) {
-        printf(" %03X", read_bits(pdata, pos, p_wl[i]));
-        pos += p_wl[i];
+        printf(" %03X", read_bits(pdata, *p_loc, p_wl[i]));
+        *p_loc += p_wl[i];
     }
     printf("\n");
     printf("\n");
-
-    return pos;
 }
 
-int dump_ldac_residual(unsigned char *pdata, int pos)
+void dump_residual_ldac(unsigned char *pdata, int *p_loc)
 {
     int iqu, isp;
     int lsp, hsp;
@@ -397,24 +390,25 @@ int dump_ldac_residual(unsigned char *pdata, int pos)
 
             for (isp = lsp; isp < hsp; isp++) {
                 //pack_store_ldac(p_ac->a_rspec[isp], wl, p_stream, p_loc);
-                printf(" %03X", read_bits(pdata, pos, wl));
-                pos += wl;
+                printf(" %03X", read_bits(pdata, *p_loc, wl));
+                *p_loc += wl;
             }
         }
     }
     printf("\n");
     printf("\n");
-
-    return pos;
 }
 
 int main(int argc, char *argv[])
 {
-    int pos;
+    int pos, *p_loc;
     unsigned char ldac[1024];
     FILE *infp;
     AB *p_ab;
     p_ab = &g_ab;
+
+    pos = 0;
+    p_loc = &pos;
 
     if ((infp = fopen(argv[1], "r"))==NULL) {
         printf("can't open input file\n");
@@ -423,13 +417,13 @@ int main(int argc, char *argv[])
 
     fread(ldac, 660, 1, infp);
 
-    pos = dump_ldac_header(ldac, 0);
-    pos = dump_band_info_ldac(p_ab, ldac, pos);
-    pos = dump_gradient_ldac(p_ab, ldac, pos);
-    pos = dump_ldac_scalefactor(ldac, pos);
-    pos = dump_ldac_spectrum(ldac, pos);
-    pos = dump_ldac_residual(ldac, pos);
-    pos = dump_ldac_scalefactor(ldac, pos);
+    dump_frame_header_ldac(ldac, p_loc);
+    dump_band_info_ldac(p_ab, ldac, p_loc);
+    dump_gradient_ldac(p_ab, ldac, p_loc);
+    dump_scale_factor_ldac(ldac, p_loc);
+    dump_spectrum_ldac(ldac, p_loc);
+    dump_residual_ldac(ldac, p_loc);
+    dump_scale_factor_ldac(ldac, p_loc);
 
     return 0;
 }
