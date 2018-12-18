@@ -316,8 +316,6 @@ DECLFUNC const unsigned char gaa_resamp_grad_ldac[LDAC_MAXGRADQU][LDAC_MAXGRADQU
 },
 };
 
-
-
 typedef struct {
     unsigned char code;
     unsigned char len;
@@ -330,14 +328,23 @@ typedef struct {
     unsigned char codes_max_bits;
 } CODES;
 
-static const CODEBOOK codebook[8] = {
+static const CODEBOOK codebook0_3[8] = {
     { 0, 2}, { 1, 2}, {14, 4}, {62, 6},
     {63, 6}, {30, 5}, { 6, 3}, { 2, 2},
 };
 
-static const CODES codes = {
-    codebook, 8, 2, 6
+static const CODES codes0 = {
+    codebook0_3, 8, 2, 6
 };
+
+static const CODEBOOK codebook1_2[4] = {
+    { 0, 1}, { 3, 2}, { 0, 0}, { 2, 2},
+};
+
+static const CODES codes1 = {
+    codebook1_2, 4, 1, 2
+};
+
 
 static int g_sfc_weight;
 static int g_nadjqus;
@@ -497,22 +504,22 @@ found:
     return i;
 }
 
-int dump_ldac_sfhuffman(unsigned char *pdata, int pos)
+int dump_ldac_sfhuffman(unsigned char *pdata, int pos, const CODES c)
 {
     int p, count, idx;
     int dif[LDAC_MAXNQUS];
 
     printf("  DIF       ");
     for (p = pos, count = 1; count < 24;) {
-        idx = decode_huffman(codes, pdata, p);
+        idx = decode_huffman(c, pdata, p);
         if (idx >= 0) {
-            if (idx <= 4) {
-                dif[count] = idx;
+            if (idx & (c.ncodes>>1)) {
+                dif[count] = -c.ncodes + idx;
             } else {
-                dif[count] = -8 + idx;
+                dif[count] = idx;
             }
             printf(" %2d", dif[count]);
-            p += codes.p_tbl[idx].len;
+            p += c.p_tbl[idx].len;
             count++;
         } else {
             break;
@@ -520,6 +527,7 @@ int dump_ldac_sfhuffman(unsigned char *pdata, int pos)
     }
     printf("\n");
 
+    //todo support scale_facotor_2
     //dump idsf
     int val0 = g_a_idsf[0];
     int val1;
@@ -545,24 +553,37 @@ int dump_ldac_sfhuffman(unsigned char *pdata, int pos)
 
 int dump_ldac_scalefactor(unsigned char *pdata, int pos)
 {
-    int sfc_bitlen, sfc_offset, hc_len;
+    int new_pos, sfc_mode, sfc_bitlen, sfc_offset, hc_len;
     printf("SCALEFACTOR\n");
     printf("  SFCMODE    %02X\n", read_bits(pdata, pos +  0, 1));
-    printf("  SFCBLEN    %02X\n", read_bits(pdata, pos +  1, 2));
-    sfc_bitlen = 3 + read_bits(pdata, pos +  1, 2);
-    printf("  IDSF       %02X\n", read_bits(pdata, pos +  3, 5));
-    sfc_offset = read_bits(pdata, pos +  3, 5);
-    printf("  SFCWTBL    %02X\n", read_bits(pdata, pos +  8, 3));
-    g_sfc_weight = read_bits(pdata, pos +  8, 3);
+    sfc_mode = read_bits(pdata, pos +  0, 1);
 
-    printf("  VAL0       %02X\n", read_bits(pdata, pos + 11, sfc_bitlen));
-    g_a_idsf[0] = read_bits(pdata, pos + 11, sfc_bitlen) + sfc_offset;
+    if (sfc_mode == 0) {
+        printf("  SFCBLEN    %02X\n", read_bits(pdata, pos +  1, 2));
+        sfc_bitlen = 3 + read_bits(pdata, pos +  1, 2);
+        printf("  IDSF       %02X\n", read_bits(pdata, pos +  3, 5));
+        sfc_offset = read_bits(pdata, pos +  3, 5);
+        printf("  SFCWTBL    %02X\n", read_bits(pdata, pos +  8, 3));
+        g_sfc_weight = read_bits(pdata, pos +  8, 3);
 
-    hc_len = dump_ldac_sfhuffman(pdata, pos + 11 + sfc_bitlen);
+        printf("  VAL0       %02X\n", read_bits(pdata, pos + 11, sfc_bitlen));
+        g_a_idsf[0] = read_bits(pdata, pos + 11, sfc_bitlen) + sfc_offset;
+
+        hc_len = dump_ldac_sfhuffman(pdata, pos + 11 + sfc_bitlen, codes0);
+        new_pos = pos + 11 + sfc_bitlen + hc_len;
+    } else {
+        /* scale_factor 2 */
+        printf("  SFCBLEN    %02X\n", read_bits(pdata, pos +  1, 2));
+        sfc_bitlen = 2 + read_bits(pdata, pos +  1, 2);
+
+        /* decode huffman */
+        hc_len = dump_ldac_sfhuffman(pdata, pos + 3, codes1);
+        new_pos = 3 + hc_len;
+    }
 
     printf("\n");
 
-    return pos + 11 + sfc_bitlen + hc_len;
+    return new_pos;
 }
 
 #define LDAC_MINIDWL1          1
@@ -617,7 +638,7 @@ int dump_ldac_spectrum(unsigned char *pdata, int pos)
     }
     printf("\n");
 
-    /* use adjust  */
+    /* adjust  */
     int nadjqus = g_nadjqus;
 	p_tmp = g_a_idwl1;
     for (iqu = 0; iqu < nqus; iqu++) {
@@ -687,6 +708,47 @@ int dump_ldac_spectrum(unsigned char *pdata, int pos)
         pos += p_wl[i];
     }
     printf("\n");
+    printf("\n");
+
+    return pos;
+}
+
+int dump_ldac_residual(unsigned char *pdata, int pos)
+{
+    int iqu, isp;
+    int lsp, hsp;
+    int nqus = 24;
+    int idwl2, wl;
+    int *p_idwl2;
+
+    p_idwl2 = g_a_idwl2;
+
+    printf("RESIDUAL\n");
+
+
+    printf("  a_idwl2   "); for (iqu = 0; iqu < 24 /* LDAC_MAXNQUS */; iqu++) {
+        printf(" %02X", p_idwl2[iqu]);
+    }
+    printf("\n");
+
+    printf(" coded spec");
+    for (iqu = 0; iqu < nqus; iqu++) {
+        idwl2 = p_idwl2[iqu];
+
+        if (idwl2 > 0) {
+            lsp = ga_isp_ldac[iqu];
+            hsp = ga_isp_ldac[iqu+1];
+            wl = ga_wl_ldac[idwl2];
+
+            for (isp = lsp; isp < hsp; isp++) {
+                //pack_store_ldac(p_ac->a_rspec[isp], wl, p_stream, p_loc);
+                printf(" %03X", read_bits(pdata, pos, wl));
+                pos += wl;
+            }
+        }
+    }
+    printf("\n");
+    printf("\n");
 
     return pos;
 }
@@ -709,6 +771,8 @@ int main(int argc, char *argv[])
     pos = dump_ldac_gradient(ldac, pos);
     pos = dump_ldac_scalefactor(ldac, pos);
     pos = dump_ldac_spectrum(ldac, pos);
+    pos = dump_ldac_residual(ldac, pos);
+    pos = dump_ldac_scalefactor(ldac, pos);
 
     return 0;
 }
