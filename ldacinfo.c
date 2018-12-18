@@ -15,6 +15,7 @@ int g_a_grad[LDAC_MAXNQUS];
 int g_a_addwl[LDAC_MAXNQUS];
 int g_a_idwl1[LDAC_MAXNQUS];
 int g_a_idwl2[LDAC_MAXNQUS];
+AB g_ab;
 
 int read_bit(unsigned char *pdata, int pos)
 {
@@ -57,34 +58,36 @@ int dump_ldac_header(unsigned char *pdata, int pos)
     return pos + 24;
 }
 
-int dump_ldac_bandinfo(unsigned char *pdata, int pos)
+int dump_band_info_ldac(AB *p_ab, unsigned char *pdata, int pos)
 {
     printf("BANDINFO\n");
     printf("  NBAND      %02X\n", read_bits(pdata, pos + 0, 4));
+    p_ab->nbands = 2 + read_bits(pdata, pos + 0, 4);
     printf("  FLAG       %02X\n", read_bits(pdata, pos + 4, 1));
     printf("\n");
 
     return pos + 5;
 }
 
-int dump_ldac_gradient(unsigned char *pdata, int pos)
+int dump_gradient_ldac(AB *p_ab, unsigned char *pdata, int pos)
 {
     int new_pos = pos;
-    int grad_mode = read_bits(pdata, pos + 0, 2);
+    p_ab->grad_mode = read_bits(pdata, pos + 0, 2);
 
     printf("GRADIENT\n");
         printf("  GRADMODE   %02X\n", read_bits(pdata, pos + 0, 2));
-    if (grad_mode == 0) {
+    if (p_ab->grad_mode == 0) {
         printf("  GRADQU0_L  %02X\n", read_bits(pdata, pos +  2, 6));
         printf("  GRADQU0_H  %02X\n", read_bits(pdata, pos +  8, 6));
         printf("  GRADOS_L   %02X\n", read_bits(pdata, pos + 14, 5));
         printf("  GRADOS_H   %02X\n", read_bits(pdata, pos + 19, 5));
         printf("  NADJQU     %02X\n", read_bits(pdata, pos + 24, 5));
         g_nadjqus = read_bits(pdata, pos + 24, 5);
+        p_ab->nadjqus = read_bits(pdata, pos + 24, 5);
         new_pos = pos + 29;
 
         int hqu = 24;
-        int ich, iqu;
+        int iqu;
         int grad_qu_l = read_bits(pdata, pos +  2, 6);
         int grad_qu_h = read_bits(pdata, pos +  8, 6) + 1;
         int grad_os_l = read_bits(pdata, pos + 14, 5);
@@ -124,15 +127,13 @@ int dump_ldac_gradient(unsigned char *pdata, int pos)
         }
         printf("\n");
 
-    } else if (grad_mode == 1 || grad_mode == 2 || grad_mode == 3) {
+    } else {
         printf("  GRADQU1    %02X\n", read_bits(pdata, pos +  2, 5));
         printf("  GRADOS     %02X\n", read_bits(pdata, pos +  7, 5));
         printf("  NADJQU     %02X\n", read_bits(pdata, pos + 12, 5));
         g_nadjqus = read_bits(pdata, pos + 12, 5);
+        p_ab->nadjqus = read_bits(pdata, pos + 12, 5);
         new_pos = pos + 17;
-    } else {
-        printf("grad mode error\n");
-        return -1;
     }
     printf("\n");
 
@@ -250,13 +251,12 @@ int dump_ldac_scalefactor(unsigned char *pdata, int pos)
 
 int dump_ldac_spectrum(unsigned char *pdata, int pos)
 {
-    int i, iqu, idwl1, idwl2, idsp;
-    int nbits = 0;
+    int i, iqu, idwl1, idwl2;
     int hqu = 24;
     int nqus = 24;
     int isp;
     int lsp, hsp;
-    int nsps, wl, val;
+    int nsps, wl;
     int *p_grad, *p_idsf, *p_addwl, *p_idwl1, *p_idwl2, *p_tmp;
 
     printf("SPECTRUM\n");
@@ -413,6 +413,8 @@ int main(int argc, char *argv[])
     int pos;
     unsigned char ldac[1024];
     FILE *infp;
+    AB *p_ab;
+    p_ab = &g_ab;
 
     if ((infp = fopen(argv[1], "r"))==NULL) {
         printf("can't open input file\n");
@@ -422,8 +424,8 @@ int main(int argc, char *argv[])
     fread(ldac, 660, 1, infp);
 
     pos = dump_ldac_header(ldac, 0);
-    pos = dump_ldac_bandinfo(ldac, pos);
-    pos = dump_ldac_gradient(ldac, pos);
+    pos = dump_band_info_ldac(p_ab, ldac, pos);
+    pos = dump_gradient_ldac(p_ab, ldac, pos);
     pos = dump_ldac_scalefactor(ldac, pos);
     pos = dump_ldac_spectrum(ldac, pos);
     pos = dump_ldac_residual(ldac, pos);

@@ -18,6 +18,72 @@
 #define LDAC_MAXLNN            8
 #define LDAC_MAXLSU (1<<LDAC_MAXLNN)
 
+#define LDAC_MAXNCH            2
+
+#define LDAC_NFRAME            2
+
+#define LDAC_MAXGRADQU        50
+
+typedef float         SCALAR;
+
+/***************************************************************************************************
+    Structure Definitions
+***************************************************************************************************/
+typedef struct _audio_block_ldac AB;
+typedef struct _audio_channel_ldac AC;
+typedef struct _audio_channel_sub_ldac ACSUB;
+
+/* Audio Channel (AC) Sub Structure */
+struct _audio_channel_sub_ldac {
+    SCALAR a_time[LDAC_MAXLSU*LDAC_NFRAME];
+    SCALAR a_spec[LDAC_MAXLSU];
+};
+
+/* Audio Channel (AC) Structure */
+struct _audio_channel_ldac {
+    int ich;
+    int frmana_cnt;
+    int sfc_mode;
+    int sfc_bitlen;
+    int sfc_offset;
+    int sfc_weight;
+    int a_idsf[LDAC_MAXNQUS];
+    int a_idwl1[LDAC_MAXNQUS];
+    int a_idwl2[LDAC_MAXNQUS];
+    int a_addwl[LDAC_MAXNQUS];
+    int a_tmp[LDAC_MAXNQUS];
+    int a_qspec[LDAC_MAXLSU];
+    int a_rspec[LDAC_MAXLSU];
+    AB *p_ab;
+    ACSUB *p_acsub;
+};
+
+/* Audio Block (AB) Structure */
+struct _audio_block_ldac {
+    int blk_type;
+    int blk_nchs;
+    int nbands;
+    int nqus;
+    int grad_mode;
+    int grad_qu_l;
+    int grad_qu_h;
+    int grad_os_l;
+    int grad_os_h;
+    int a_grad[LDAC_MAXGRADQU];
+    int nadjqus;
+    int abc_status;
+    int nbits_ab;
+    int nbits_band;
+    int nbits_grad;
+    int nbits_scfc;
+    int nbits_spec;
+    int nbits_avail;
+    int nbits_used;
+    int *p_smplrate_id;
+    int *p_error_code;
+    AC  *ap_ac[2];
+};
+
 /***************************************************************************************************
     Tables related to Quantization Units
 ***************************************************************************************************/
