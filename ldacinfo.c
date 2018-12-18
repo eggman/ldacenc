@@ -191,19 +191,24 @@ int dump_ldac_sfhuffman(AC *p_ac, unsigned char *pdata, int pos, const CODES c)
     }
     printf("\n");
 
-    //todo support scale_facotor_2
-    //dump idsf
-    int val0 = p_ac->a_idsf[0];
-    int val1;
-    const unsigned char *p_tbl;
+    /* compute idsf */
+    if(p_ac->sfc_mode == 0) {
+        int val0 = p_ac->a_idsf[0];
+        int val1;
+        const unsigned char *p_tbl;
 
-    p_tbl = gaa_sfcwgt_ldac[p_ac->sfc_weight];
-    p_ac->a_idsf[0] = val0 - p_tbl[0];
+        p_tbl = gaa_sfcwgt_ldac[p_ac->sfc_weight];
+        p_ac->a_idsf[0] = val0 - p_tbl[0];
 
-    for (int iqu = 1; iqu < p_ac->p_ab->nqus; iqu++) {
-        val1 = dif[iqu] + val0;
-        p_ac->a_idsf[iqu] = val1 - p_tbl[iqu];
-        val0 = val1;
+        for (int iqu = 1; iqu < p_ac->p_ab->nqus; iqu++) {
+            val1 = dif[iqu] + val0;
+            p_ac->a_idsf[iqu] = val1 - p_tbl[iqu];
+            val0 = val1;
+        }
+    } else if (p_ac->sfc_mode == 1 && p_ac->ich != 0) {
+        for (int iqu = 0; iqu < p_ac->p_ab->nqus; iqu++) {
+            p_ac->a_idsf[iqu] = p_ac->p_ab->ap_ac[0]->a_idsf[iqu] + dif[iqu];
+        }
     }
 
     printf("  a_idsf    ");
@@ -263,6 +268,7 @@ void dump_scale_factor_ldac(AC *p_ac, unsigned char *pdata, int *p_loc)
         }
     } else {
         if (sfc_mode == 0) {
+            dump_scale_factor_0_ldac(p_ac, pdata, p_loc);
         } else {
             dump_scale_factor_2_ldac(p_ac, pdata, p_loc);
         }

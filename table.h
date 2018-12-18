@@ -419,8 +419,14 @@ static const CODEBOOK codebook1_2[4] = {
     { 0, 1}, { 3, 2}, { 0, 0}, { 2, 2},
 };
 
+static const CODEBOOK codebook1_3[8] = {
+    {  1, 1}, {  0, 3}, {  4, 5}, { 11, 6},
+    {  0, 0}, { 10, 6}, {  3, 4}, {  1, 2},
+};
+
+
 static const CODES codes1 = {
-    codebook1_2, 4, 1, 2
+    codebook1_3, 8, 1, 6
 };
 
 
