@@ -10,6 +10,69 @@
 #define DECLFUNC static
 #define LDAC_NSFCWTBL          8
 #define LDAC_MAXNQUS          34
+#define LDAC_NIDWL            16
+/***************************************************************************************************
+    Tables related to Quantization Units
+***************************************************************************************************/
+DECLFUNC const unsigned char ga_idsp_ldac[LDAC_MAXNQUS] = {
+      0,  0,  0,  0,  0,  0,  0,  0,
+      1,  1,  1,  1,
+      1,  1,  1,  1,
+      1,  1,  1,  1,
+      2,  2,
+      2,  2,
+      3,  3,
+      3,  3,
+      3,  3,
+      3,  3,
+      3,  3,
+};
+
+DECLFUNC const unsigned char ga_nsps_ldac[LDAC_MAXNQUS] = {
+      2,  2,  2,  2,  2,  2,  2,  2,
+      4,  4,  4,  4,
+      4,  4,  4,  4,
+      4,  4,  4,  4,
+      8,  8,
+      8,  8,
+     16, 16,
+     16, 16,
+     16, 16,
+     16, 16,
+     16, 16,
+};
+
+DECLFUNC const unsigned short ga_isp_ldac[LDAC_MAXNQUS+1] = {
+      0,  2,  4,  6,  8, 10, 12, 14,
+     16, 20, 24, 28,
+     32, 36, 40, 44,
+     48, 52, 56, 60,
+     64, 72,
+     80, 88,
+     96,112,
+    128,144,
+    160,176,
+    192,208,
+    224,240,
+    256,
+};
+
+/***************************************************************************************************
+    Encoding/Decoding Tables for Spectrum Data
+***************************************************************************************************/
+DECLFUNC const unsigned char ga_wl_ldac[LDAC_NIDWL] = {
+    0,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16,
+};
+
+DECLFUNC const short gaa_ndim_wls_ldac[4][LDAC_NIDWL] = {
+    {0,  3,  6,  8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32},
+    {0,  7, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64},
+    {0, 14, 24, 32, 40, 48, 56, 64, 72, 80, 88, 96,104,112,120,128},
+    {0, 28, 48, 64, 80, 96,112,128,144,160,176,192,208,224,240,256},
+};
+
+
+
 DECLFUNC const unsigned char gaa_sfcwgt_ldac[LDAC_NSFCWTBL][LDAC_MAXNQUS] = {
 {
      1,  0,  0,  1,  1,  1,  2,  2,  2,  2,  2,  2,  3,  3,  3,  3,
@@ -277,8 +340,12 @@ static const CODES codes = {
 };
 
 static int g_sfc_weight;
+static int g_nadjqus;
 int g_a_idsf[LDAC_MAXNQUS];
 int g_a_grad[LDAC_MAXNQUS];
+int g_a_addwl[LDAC_MAXNQUS];
+int g_a_idwl1[LDAC_MAXNQUS];
+int g_a_idwl2[LDAC_MAXNQUS];
 
 int read_bit(unsigned char *pdata, int pos)
 {
@@ -344,6 +411,7 @@ int dump_ldac_gradient(unsigned char *pdata, int pos)
         printf("  GRADOS_L   %02X\n", read_bits(pdata, pos + 14, 5));
         printf("  GRADOS_H   %02X\n", read_bits(pdata, pos + 19, 5));
         printf("  NADJQU     %02X\n", read_bits(pdata, pos + 24, 5));
+        g_nadjqus = read_bits(pdata, pos + 24, 5);
         new_pos = pos + 29;
 
         int hqu = 24;
@@ -391,6 +459,7 @@ int dump_ldac_gradient(unsigned char *pdata, int pos)
         printf("  GRADQU1    %02X\n", read_bits(pdata, pos +  2, 5));
         printf("  GRADOS     %02X\n", read_bits(pdata, pos +  7, 5));
         printf("  NADJQU     %02X\n", read_bits(pdata, pos + 12, 5));
+        g_nadjqus = read_bits(pdata, pos + 12, 5);
         new_pos = pos + 17;
     } else {
         printf("grad mode error\n");
@@ -451,7 +520,7 @@ int dump_ldac_sfhuffman(unsigned char *pdata, int pos)
     }
     printf("\n");
 
-    //dump p_idsf
+    //dump idsf
     int val0 = g_a_idsf[0];
     int val1;
     const unsigned char *p_tbl;
@@ -476,7 +545,7 @@ int dump_ldac_sfhuffman(unsigned char *pdata, int pos)
 
 int dump_ldac_scalefactor(unsigned char *pdata, int pos)
 {
-    int sfc_bitlen, sfc_offset;
+    int sfc_bitlen, sfc_offset, hc_len;
     printf("SCALEFACTOR\n");
     printf("  SFCMODE    %02X\n", read_bits(pdata, pos +  0, 1));
     printf("  SFCBLEN    %02X\n", read_bits(pdata, pos +  1, 2));
@@ -489,16 +558,114 @@ int dump_ldac_scalefactor(unsigned char *pdata, int pos)
     printf("  VAL0       %02X\n", read_bits(pdata, pos + 11, sfc_bitlen));
     g_a_idsf[0] = read_bits(pdata, pos + 11, sfc_bitlen) + sfc_offset;
 
-    dump_ldac_sfhuffman(pdata, pos + 11 + sfc_bitlen);
+    hc_len = dump_ldac_sfhuffman(pdata, pos + 11 + sfc_bitlen);
 
     printf("\n");
 
-    return pos + 11 + sfc_bitlen;
+    return pos + 11 + sfc_bitlen + hc_len;
 }
 
+#define LDAC_MINIDWL1          1
+#define LDAC_MAXIDWL1         15
+#define LDAC_MAXIDWL2         15
+#define LDAC_2DIMSPECBITS      3
+#define LDAC_4DIMSPECBITS      7
 int dump_ldac_spectrum(unsigned char *pdata, int pos)
 {
+    int i, iqu, idwl1, idwl2, idsp;
+    int nbits = 0;
+    int hqu = 24;
+    int nqus = 24;
+    int isp;
+    int lsp, hsp;
+    int nsps, wl, val;
+    int *p_grad, *p_idsf, *p_addwl, *p_idwl1, *p_idwl2, *p_tmp;
+    p_grad = g_a_grad;
+	p_idsf = g_a_idsf;
+	p_addwl = g_a_addwl;
+	p_idwl1 = g_a_idwl1;
+	p_idwl2 = g_a_idwl2;
+
+    /* grad_mode == 0 */
+    for (iqu = 0; iqu < hqu; iqu++) {
+        for (iqu = 0; iqu < hqu; iqu++) {
+            idwl1 = p_idsf[iqu] + p_grad[iqu];
+            if (idwl1 < LDAC_MINIDWL1) {
+                idwl1 = LDAC_MINIDWL1;
+            }
+            idwl2 = 0;
+            if (idwl1 > LDAC_MAXIDWL1) {
+                idwl2 = idwl1 - LDAC_MAXIDWL1;
+                if (idwl2 > LDAC_MAXIDWL2) {
+                    idwl2 = LDAC_MAXIDWL2;
+                }
+                idwl1 = LDAC_MAXIDWL1;
+            }
+            p_idwl1[iqu] = idwl1;
+            p_idwl2[iqu] = idwl2;
+        }
+    }
+
+    printf("  a_idwl1 a ");
+    for (iqu = 0; iqu < 24 /* LDAC_MAXNQUS */; iqu++) {
+        printf(" %02X", p_idwl1[iqu]);
+    }
+    printf("\n");
+
+    /* use adjust  */
+    int nadjqus = g_nadjqus;
+	p_tmp = g_a_idwl1;
+    for (iqu = 0; iqu < nqus; iqu++) {
+        idwl1 = p_tmp[iqu];
+        if (iqu < nadjqus) {
+            idwl1++;
+        }
+        idwl2 = 0;
+        if (idwl1 > LDAC_MAXIDWL1) {
+            idwl2 = idwl1 - LDAC_MAXIDWL1;
+            if (idwl2 > LDAC_MAXIDWL2) {
+                idwl2 = LDAC_MAXIDWL2;
+            }
+            idwl1 = LDAC_MAXIDWL1;
+        }
+        p_idwl1[iqu] = idwl1;
+        p_idwl2[iqu] = idwl2;
+    }
+
+    printf("  a_idwl1 b ");
+    for (iqu = 0; iqu < 24 /* LDAC_MAXNQUS */; iqu++) {
+        printf(" %02X", p_idwl1[iqu]);
+    }
+    printf("\n");
+
+    printf("  wl        ");
+    for (iqu = 0; iqu < nqus; iqu++) {
+        lsp = ga_isp_ldac[iqu];
+        hsp = ga_isp_ldac[iqu+1];
+        nsps = ga_nsps_ldac[iqu];
+        idwl1 = g_a_idwl1[iqu];
+        wl = ga_wl_ldac[idwl1];
+
+        if (idwl1 == 1) {
+            isp = lsp;
+
+            if (nsps == 2) {
+                printf(" %2d", LDAC_2DIMSPECBITS);
+            } else {
+                for (i = 0; i < nsps>>2; i++, isp+=4) {
+                   printf(" %2d", LDAC_4DIMSPECBITS);
+                }
+            }
+        } else {
+            for (isp = lsp; isp < hsp; isp++) {
+                printf(" %2d", wl);
+            }
+        }
+    }
+    printf("\n");
+
     printf("SPECTRUM\n");
+    printf("  S  0  8    %03X\n", read_bits(pdata, pos +  0, 8));
     return 0;
 }
 
