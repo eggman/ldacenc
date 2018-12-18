@@ -7,6 +7,7 @@
 
 #define DECLFUNC static
 #define LDAC_NSFCWTBL          8
+#define LDAC_MAXNBANDS        16
 #define LDAC_MAXNQUS          34
 #define LDAC_NIDWL            16
 
@@ -128,6 +129,10 @@ DECLFUNC const unsigned short ga_isp_ldac[LDAC_MAXNQUS+1] = {
     192,208,
     224,240,
     256,
+};
+
+DECLFUNC const unsigned char ga_nqus_ldac[LDAC_MAXNBANDS+1] = {
+    0,  4,  8, 10, 12, 14, 16, 18, 20, 22, 24, 25, 26, 28, 30, 32, 34,
 };
 
 /***************************************************************************************************

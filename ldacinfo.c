@@ -57,6 +57,7 @@ void dump_band_info_ldac(AB *p_ab, unsigned char *pdata, int *p_loc)
     printf("BANDINFO\n");
     printf("  NBAND      %02X\n", read_bits(pdata, *p_loc + 0, 4));
     p_ab->nbands = 2 + read_bits(pdata, *p_loc + 0, 4);
+    p_ab->nqus = ga_nqus_ldac[p_ab->nbands];
     printf("  FLAG       %02X\n", read_bits(pdata, *p_loc + 4, 1));
     printf("\n");
 
@@ -77,7 +78,7 @@ void dump_gradient_ldac(AB *p_ab, unsigned char *pdata, int *p_loc)
         printf("  NADJQU     %02X\n", read_bits(pdata, *p_loc + 24, 5));
         p_ab->nadjqus = read_bits(pdata, *p_loc + 24, 5);
 
-        int hqu = 24;
+        int hqu = p_ab->nqus;
         int iqu;
         int grad_qu_l = read_bits(pdata, *p_loc +  2, 6);
         int grad_qu_h = read_bits(pdata, *p_loc +  8, 6) + 1;
@@ -113,7 +114,7 @@ void dump_gradient_ldac(AB *p_ab, unsigned char *pdata, int *p_loc)
             }
         }
         printf("  a_grad   ");
-        for (iqu = 0; iqu < 24; iqu++ ) {
+        for (iqu = 0; iqu < hqu; iqu++ ) {
             printf(" %d", p_grad[iqu]);
         }
         printf("\n");
@@ -151,8 +152,8 @@ int decode_huffman(const CODES c, unsigned char *pdata, int start_pos)
     }
     puts("not found");
     return -1;
-found:
 
+found:
     return i;
 }
 
@@ -162,7 +163,7 @@ int dump_ldac_sfhuffman(AC *p_ac, unsigned char *pdata, int pos, const CODES c)
     int dif[LDAC_MAXNQUS];
 
     printf("  DIF       ");
-    for (p = pos, count = 1; count < 24;) {
+    for (p = pos, count = 1; count < p_ac->p_ab->nqus;) {
         idx = decode_huffman(c, pdata, p);
         if (idx >= 0) {
             if (idx & (c.ncodes>>1)) {
@@ -188,14 +189,14 @@ int dump_ldac_sfhuffman(AC *p_ac, unsigned char *pdata, int pos, const CODES c)
     p_tbl = gaa_sfcwgt_ldac[p_ac->sfc_weight];
     p_ac->a_idsf[0] = val0 - p_tbl[0];
 
-    for (int iqu = 1; iqu < 24; iqu++) {
+    for (int iqu = 1; iqu < p_ac->p_ab->nqus; iqu++) {
         val1 = dif[iqu] + val0;
         p_ac->a_idsf[iqu] = val1 - p_tbl[iqu];
         val0 = val1;
     }
 
     printf("  a_idsf    ");
-    for (int i = 0; i < 24 /* LDAC_MAXNQUS */; i++) {
+    for (int i = 0; i < p_ac->p_ab->nqus; i++) {
         printf(" %02X", p_ac->a_idsf[i]);
     }
     printf("\n");
@@ -242,8 +243,8 @@ void dump_scale_factor_ldac(AC *p_ac, unsigned char *pdata, int *p_loc)
 void dump_spectrum_ldac(AC *p_ac, unsigned char *pdata, int *p_loc)
 {
     int i, iqu, idwl1, idwl2;
-    int hqu = 24;
-    int nqus = 24;
+    int hqu = p_ac->p_ab->nqus;
+    int nqus = hqu;
     int isp;
     int lsp, hsp;
     int nsps, wl;
@@ -277,12 +278,12 @@ void dump_spectrum_ldac(AC *p_ac, unsigned char *pdata, int *p_loc)
     }
 
     printf("  a_idwl1 a ");
-    for (iqu = 0; iqu < 24 /* LDAC_MAXNQUS */; iqu++) {
+    for (iqu = 0; iqu < nqus; iqu++) {
         printf(" %02X", p_idwl1[iqu]);
     }
     printf("\n");
 
-    /* adjust  */
+    /* adjust */
     int nadjqus = p_ac->p_ab->nadjqus;
 	p_tmp = p_ac->a_idwl1;
     for (iqu = 0; iqu < nqus; iqu++) {
@@ -303,7 +304,7 @@ void dump_spectrum_ldac(AC *p_ac, unsigned char *pdata, int *p_loc)
     }
 
     printf("  a_idwl1 b ");
-    for (iqu = 0; iqu < 24 /* LDAC_MAXNQUS */; iqu++) {
+    for (iqu = 0; iqu < nqus; iqu++) {
         printf(" %02X", p_idwl1[iqu]);
     }
     printf("\n");
@@ -351,15 +352,14 @@ void dump_spectrum_ldac(AC *p_ac, unsigned char *pdata, int *p_loc)
         printf(" %03X", read_bits(pdata, *p_loc, p_wl[i]));
         *p_loc += p_wl[i];
     }
-    printf("\n");
-    printf("\n");
+    printf("\n\n");
 }
 
 void dump_residual_ldac(AC *p_ac, unsigned char *pdata, int *p_loc)
 {
     int iqu, isp;
     int lsp, hsp;
-    int nqus = 24;
+    int nqus = p_ac->p_ab->nqus;
     int idwl2, wl;
     int *p_idwl2;
 
@@ -367,8 +367,8 @@ void dump_residual_ldac(AC *p_ac, unsigned char *pdata, int *p_loc)
 
     printf("RESIDUAL\n");
 
-
-    printf("  a_idwl2   "); for (iqu = 0; iqu < 24 /* LDAC_MAXNQUS */; iqu++) {
+    printf("  a_idwl2   ");
+    for (iqu = 0; iqu < nqus; iqu++) {
         printf(" %02X", p_idwl2[iqu]);
     }
     printf("\n");
@@ -383,14 +383,12 @@ void dump_residual_ldac(AC *p_ac, unsigned char *pdata, int *p_loc)
             wl = ga_wl_ldac[idwl2];
 
             for (isp = lsp; isp < hsp; isp++) {
-                //pack_store_ldac(p_ac->a_rspec[isp], wl, p_stream, p_loc);
                 printf(" %03X", read_bits(pdata, *p_loc, wl));
                 *p_loc += wl;
             }
         }
     }
-    printf("\n");
-    printf("\n");
+    printf("\n\n");
 }
 
 int main(int argc, char *argv[])
