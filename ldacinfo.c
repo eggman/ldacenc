@@ -570,6 +570,8 @@ int dump_ldac_scalefactor(unsigned char *pdata, int pos)
 #define LDAC_MAXIDWL2         15
 #define LDAC_2DIMSPECBITS      3
 #define LDAC_4DIMSPECBITS      7
+#define LDAC_MAXLNN            8
+#define LDAC_MAXLSU (1<<LDAC_MAXLNN)
 int dump_ldac_spectrum(unsigned char *pdata, int pos)
 {
     int i, iqu, idwl1, idwl2, idsp;
@@ -580,6 +582,9 @@ int dump_ldac_spectrum(unsigned char *pdata, int pos)
     int lsp, hsp;
     int nsps, wl, val;
     int *p_grad, *p_idsf, *p_addwl, *p_idwl1, *p_idwl2, *p_tmp;
+
+    printf("SPECTRUM\n");
+
     p_grad = g_a_grad;
 	p_idsf = g_a_idsf;
 	p_addwl = g_a_addwl;
@@ -638,6 +643,9 @@ int dump_ldac_spectrum(unsigned char *pdata, int pos)
     }
     printf("\n");
 
+    /* wl */
+    int p_wl[LDAC_MAXLSU];
+    int j = 0;
     printf("  wl        ");
     for (iqu = 0; iqu < nqus; iqu++) {
         lsp = ga_isp_ldac[iqu];
@@ -651,22 +659,36 @@ int dump_ldac_spectrum(unsigned char *pdata, int pos)
 
             if (nsps == 2) {
                 printf(" %2d", LDAC_2DIMSPECBITS);
+                p_wl[j] = LDAC_2DIMSPECBITS;
+                j++;
             } else {
                 for (i = 0; i < nsps>>2; i++, isp+=4) {
                    printf(" %2d", LDAC_4DIMSPECBITS);
+                   p_wl[j] = LDAC_4DIMSPECBITS;
+                   j++;
                 }
             }
         } else {
             for (isp = lsp; isp < hsp; isp++) {
                 printf(" %2d", wl);
+                p_wl[j] = wl;
+                j++;
             }
         }
     }
     printf("\n");
 
-    printf("SPECTRUM\n");
-    printf("  S  0  8    %03X\n", read_bits(pdata, pos +  0, 8));
-    return 0;
+    // spectrum
+    int nsp = j;
+
+    printf(" coded spec");
+    for (i = 0; i < nsp; i++) {
+        printf(" %03X", read_bits(pdata, pos, p_wl[i]));
+        pos += p_wl[i];
+    }
+    printf("\n");
+
+    return pos;
 }
 
 int main(int argc, char *argv[])
