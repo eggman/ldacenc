@@ -69,7 +69,7 @@ void dump_gradient_ldac(AB *p_ab, unsigned char *pdata, int *p_loc)
     p_ab->grad_mode = read_bits(pdata, *p_loc + 0, 2);
 
     printf("GRADIENT\n");
-        printf("  GRADMODE   %02X\n", read_bits(pdata, *p_loc + 0, 2));
+    printf("  GRADMODE   %02X\n", read_bits(pdata, *p_loc + 0, 2));
     if (p_ab->grad_mode == 0) {
         printf("  GRADQU0_L  %02X\n", read_bits(pdata, *p_loc +  2, 6));
         printf("  GRADQU0_H  %02X\n", read_bits(pdata, *p_loc +  8, 6));
@@ -204,39 +204,58 @@ int dump_ldac_sfhuffman(AC *p_ac, unsigned char *pdata, int pos, const CODES c)
     return p - pos;
 }
 
+void dump_scale_factor_0_ldac(AC *p_ac, unsigned char *pdata, int *p_loc)
+{
+    int sfc_bitlen, sfc_offset, hc_len;
+
+    printf("  SFCBLEN    %02X\n", read_bits(pdata, *p_loc +  0, 2));
+    sfc_bitlen = 3 + read_bits(pdata, *p_loc +  0, 2);
+    p_ac->sfc_bitlen = sfc_bitlen;
+    printf("  IDSF       %02X\n", read_bits(pdata, *p_loc +  2, 5));
+    sfc_offset = read_bits(pdata, *p_loc +  2, 5);
+    p_ac->sfc_offset = sfc_offset;
+    printf("  SFCWTBL    %02X\n", read_bits(pdata, *p_loc +  7, 3));
+    p_ac->sfc_weight = read_bits(pdata, *p_loc +  7, 3);
+
+    printf("  VAL0       %02X\n", read_bits(pdata, *p_loc + 10, sfc_bitlen));
+    p_ac->a_idsf[0] = read_bits(pdata, *p_loc + 10, sfc_bitlen) + sfc_offset;
+
+    hc_len = dump_ldac_sfhuffman(p_ac, pdata, *p_loc + 10 + sfc_bitlen, codes0);
+    *p_loc += 10 + sfc_bitlen + hc_len;
+}
+
+void dump_scale_factor_2_ldac(AC *p_ac, unsigned char *pdata, int *p_loc)
+{
+    int sfc_bitlen, hc_len;
+
+    printf("  SFCBLEN    %02X\n", read_bits(pdata, *p_loc +  0, 2));
+    sfc_bitlen = 2 + read_bits(pdata, *p_loc +  0, 2);
+
+    hc_len = dump_ldac_sfhuffman(p_ac, pdata, *p_loc + 2, codes1);
+    *p_loc += 2 + hc_len;
+}
+
 void dump_scale_factor_ldac(AC *p_ac, unsigned char *pdata, int *p_loc)
 {
-    int sfc_mode, sfc_bitlen, sfc_offset, hc_len;
+    int sfc_mode;
+
     printf("SCALEFACTOR\n");
-    printf("  SFCMODE    %02X\n", read_bits(pdata, *p_loc +  0, 1));
     sfc_mode = read_bits(pdata, *p_loc +  0, 1);
+    printf("  SFCMODE    %02X\n", sfc_mode);
     p_ac->sfc_mode = sfc_mode;
+    *p_loc += 1;
 
-    if (sfc_mode == 0) {
-        printf("  SFCBLEN    %02X\n", read_bits(pdata, *p_loc +  1, 2));
-        sfc_bitlen = 3 + read_bits(pdata, *p_loc +  1, 2);
-        p_ac->sfc_bitlen = sfc_bitlen;
-        printf("  IDSF       %02X\n", read_bits(pdata, *p_loc +  3, 5));
-        sfc_offset = read_bits(pdata, *p_loc +  3, 5);
-        p_ac->sfc_offset = sfc_offset;
-        printf("  SFCWTBL    %02X\n", read_bits(pdata, *p_loc +  8, 3));
-        p_ac->sfc_weight = read_bits(pdata, *p_loc +  8, 3);
-
-        printf("  VAL0       %02X\n", read_bits(pdata, *p_loc + 11, sfc_bitlen));
-        p_ac->a_idsf[0] = read_bits(pdata, *p_loc + 11, sfc_bitlen) + sfc_offset;
-
-        hc_len = dump_ldac_sfhuffman(p_ac, pdata, *p_loc + 11 + sfc_bitlen, codes0);
-        *p_loc += 11 + sfc_bitlen + hc_len;
+    if (p_ac->ich == 0) {
+        if (sfc_mode == 0) {
+            dump_scale_factor_0_ldac(p_ac, pdata, p_loc);
+        } else {
+        }
     } else {
-        /* scale_factor 2 */
-        printf("  SFCBLEN    %02X\n", read_bits(pdata, *p_loc +  1, 2));
-        sfc_bitlen = 2 + read_bits(pdata, *p_loc +  1, 2);
-
-        /* decode huffman */
-        hc_len = dump_ldac_sfhuffman(p_ac, pdata, *p_loc + 3, codes1);
-        *p_loc += 3 + hc_len;
+        if (sfc_mode == 0) {
+        } else {
+            dump_scale_factor_2_ldac(p_ac, pdata, p_loc);
+        }
     }
-
     printf("\n");
 }
 
