@@ -6,6 +6,7 @@
  */
 
 #define DECLFUNC static
+#define LDAC_BYTESIZE          8
 #define LDAC_NSFCWTBL          8
 #define LDAC_MAXNBANDS        16
 #define LDAC_MAXNQUS          34

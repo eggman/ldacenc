@@ -427,6 +427,20 @@ void dump_residual_ldac(AC *p_ac, unsigned char *pdata, int *p_loc)
     printf("\n\n");
 }
 
+void dump_byte_alignment_ldac(unsigned char *pdata, int *p_loc)
+{
+    int nbits_padding;
+
+    nbits_padding = ((*p_loc + LDAC_BYTESIZE - 1) / LDAC_BYTESIZE) * LDAC_BYTESIZE - *p_loc;
+
+    if (nbits_padding > 0) {
+        printf("PADDING %d bits\n\n", nbits_padding);
+        *p_loc += nbits_padding;
+    }
+
+    return;
+}
+
 int main(int argc, char *argv[])
 {
     int pos, *p_loc;
@@ -464,6 +478,12 @@ int main(int argc, char *argv[])
     dump_residual_ldac(p_ac, ldac, p_loc);
     p_ac = p_ab->ap_ac[1];
     dump_scale_factor_ldac(p_ac, ldac, p_loc);
+    dump_spectrum_ldac(p_ac, ldac, p_loc);
+    dump_residual_ldac(p_ac, ldac, p_loc);
+
+    dump_byte_alignment_ldac(ldac, p_loc);
+
+    dump_frame_header_ldac(ldac, p_loc);
 
     return 0;
 }
