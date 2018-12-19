@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include "table.h"
 
+CFG g_cfg;
 AC g_ac0, g_ac1;
 AB g_ab;
 
@@ -31,7 +32,7 @@ int read_bits(unsigned char *pdata, int pos, int nbits)
     return tmp;
 }
 
-void dump_frame_header_ldac(unsigned char *pdata, int *p_loc)
+void dump_frame_header_ldac(CFG *p_cfg, unsigned char *pdata, int *p_loc)
 {
     int syncword;
 
@@ -48,6 +49,11 @@ void dump_frame_header_ldac(unsigned char *pdata, int *p_loc)
     printf("  FRAMELEN   %02X\n", read_bits(pdata, *p_loc + 13, 9));
     printf("  FRAMESTAT  %02X\n", read_bits(pdata, *p_loc + 22, 2));
     printf("\n");
+    p_cfg->syncword     = syncword;
+    p_cfg->smplrate_id  = read_bits(pdata, *p_loc +  8, 3);
+    p_cfg->chconfig_id  = read_bits(pdata, *p_loc + 11, 2);
+    p_cfg->frame_length = read_bits(pdata, *p_loc + 13, 9);
+    p_cfg->frame_status = read_bits(pdata, *p_loc + 22, 2);
 
     *p_loc += 24;
 }
@@ -555,10 +561,12 @@ int main(int argc, char *argv[])
     int pos, *p_loc;
     unsigned char ldac[1024];
     FILE *infp;
+    CFG *p_cfg;
     AB *p_ab;
     AC *p_ac;
 
-    /* initialize little */
+    /* minimum initialize */
+    p_cfg = &g_cfg;
     p_ab = &g_ab;
     p_ab->ap_ac[0] = &g_ac0;
     p_ab->ap_ac[1] = &g_ac1;
@@ -577,7 +585,7 @@ int main(int argc, char *argv[])
 
     fread(ldac, 660, 1, infp);
 
-    dump_frame_header_ldac(ldac, p_loc);
+    dump_frame_header_ldac(p_cfg, ldac, p_loc);
     dump_band_info_ldac(p_ab, ldac, p_loc);
     dump_gradient_ldac(p_ab, ldac, p_loc);
 
@@ -592,7 +600,7 @@ int main(int argc, char *argv[])
 
     dump_byte_alignment_ldac(ldac, p_loc);
 
-    dump_frame_header_ldac(ldac, p_loc);
+    dump_frame_header_ldac(p_cfg, ldac, p_loc);
     dump_band_info_ldac(p_ab, ldac, p_loc);
     dump_gradient_ldac(p_ab, ldac, p_loc);
 
@@ -607,14 +615,68 @@ int main(int argc, char *argv[])
 
     dump_byte_alignment_ldac(ldac, p_loc);
 
-    dump_frame_header_ldac(ldac, p_loc);
+    dump_frame_header_ldac(p_cfg, ldac, p_loc);
     dump_band_info_ldac(p_ab, ldac, p_loc);
     dump_gradient_ldac(p_ab, ldac, p_loc);
 
     p_ac = p_ab->ap_ac[0];
     dump_scale_factor_ldac(p_ac, ldac, p_loc);
     dump_spectrum_ldac(p_ac, ldac, p_loc);
+    dump_residual_ldac(p_ac, ldac, p_loc);
+    p_ac = p_ab->ap_ac[1];
+    dump_scale_factor_ldac(p_ac, ldac, p_loc);
+    dump_spectrum_ldac(p_ac, ldac, p_loc);
+    dump_residual_ldac(p_ac, ldac, p_loc);
 
+    dump_byte_alignment_ldac(ldac, p_loc);
+
+    dump_frame_header_ldac(p_cfg, ldac, p_loc);
+    dump_band_info_ldac(p_ab, ldac, p_loc);
+    dump_gradient_ldac(p_ab, ldac, p_loc);
+
+    p_ac = p_ab->ap_ac[0];
+    dump_scale_factor_ldac(p_ac, ldac, p_loc);
+    dump_spectrum_ldac(p_ac, ldac, p_loc);
+    dump_residual_ldac(p_ac, ldac, p_loc);
+    p_ac = p_ab->ap_ac[1];
+    dump_scale_factor_ldac(p_ac, ldac, p_loc);
+    dump_spectrum_ldac(p_ac, ldac, p_loc);
+    dump_residual_ldac(p_ac, ldac, p_loc);
+
+    dump_byte_alignment_ldac(ldac, p_loc);
+
+    *p_loc += 8; // todo why?
+
+    dump_frame_header_ldac(p_cfg, ldac, p_loc);
+    dump_band_info_ldac(p_ab, ldac, p_loc);
+    dump_gradient_ldac(p_ab, ldac, p_loc);
+
+    p_ac = p_ab->ap_ac[0];
+    dump_scale_factor_ldac(p_ac, ldac, p_loc);
+    dump_spectrum_ldac(p_ac, ldac, p_loc);
+    dump_residual_ldac(p_ac, ldac, p_loc);
+    p_ac = p_ab->ap_ac[1];
+    dump_scale_factor_ldac(p_ac, ldac, p_loc);
+    dump_spectrum_ldac(p_ac, ldac, p_loc);
+    dump_residual_ldac(p_ac, ldac, p_loc);
+
+    dump_byte_alignment_ldac(ldac, p_loc);
+
+    dump_frame_header_ldac(p_cfg, ldac, p_loc);
+    dump_band_info_ldac(p_ab, ldac, p_loc);
+    dump_gradient_ldac(p_ab, ldac, p_loc);
+
+    p_ac = p_ab->ap_ac[0];
+    dump_scale_factor_ldac(p_ac, ldac, p_loc);
+    dump_spectrum_ldac(p_ac, ldac, p_loc);
+    dump_residual_ldac(p_ac, ldac, p_loc);
+    p_ac = p_ab->ap_ac[1];
+    dump_scale_factor_ldac(p_ac, ldac, p_loc);
+    dump_spectrum_ldac(p_ac, ldac, p_loc);
+    dump_residual_ldac(p_ac, ldac, p_loc);
+
+
+    printf("\n loc=%d\n", *p_loc / 8);
     return 0;
 }
 

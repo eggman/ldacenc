@@ -46,9 +46,20 @@ typedef float         SCALAR;
 /***************************************************************************************************
     Structure Definitions
 ***************************************************************************************************/
+typedef struct _config_info_ldac CFG;
 typedef struct _audio_block_ldac AB;
 typedef struct _audio_channel_ldac AC;
 typedef struct _audio_channel_sub_ldac ACSUB;
+
+/* Configuration Information Structure */
+struct _config_info_ldac {
+    int syncword;
+    int smplrate_id;
+    int chconfig_id;
+    int ch;
+    int frame_length;
+    int frame_status;
+};
 
 /* Audio Channel (AC) Sub Structure */
 struct _audio_channel_sub_ldac {
