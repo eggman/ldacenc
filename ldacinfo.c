@@ -560,10 +560,17 @@ int main(int argc, char *argv[])
 {
     int pos, *p_loc;
     unsigned char ldac[1024];
+    STREAM *p_stream;
     FILE *infp;
     CFG *p_cfg;
     AB *p_ab;
     AC *p_ac;
+
+    if ((infp = fopen(argv[1], "r"))==NULL) {
+        printf("can't open input file\n");
+        return -1;
+    }
+    fread(ldac, 660, 1, infp);
 
     /* minimum initialize */
     p_cfg = &g_cfg;
@@ -574,109 +581,31 @@ int main(int argc, char *argv[])
     p_ab->ap_ac[0]->p_ab = p_ab;
     p_ab->ap_ac[1]->ich = 1;
     p_ab->ap_ac[1]->p_ab = p_ab;
-
-    pos = 0;
     p_loc = &pos;
+    p_stream = ldac;
 
-    if ((infp = fopen(argv[1], "r"))==NULL) {
-        printf("can't open input file\n");
-        return -1;
-    }
+    do {
+        *p_loc = 0;
 
-    fread(ldac, 660, 1, infp);
+        dump_frame_header_ldac(p_cfg, p_stream, p_loc);
+        dump_band_info_ldac(p_ab, p_stream, p_loc);
+        dump_gradient_ldac(p_ab, p_stream, p_loc);
 
-    dump_frame_header_ldac(p_cfg, ldac, p_loc);
-    dump_band_info_ldac(p_ab, ldac, p_loc);
-    dump_gradient_ldac(p_ab, ldac, p_loc);
+        p_ac = p_ab->ap_ac[0];
+        dump_scale_factor_ldac(p_ac, p_stream, p_loc);
+        dump_spectrum_ldac(p_ac, p_stream, p_loc);
+        dump_residual_ldac(p_ac, p_stream, p_loc);
+        p_ac = p_ab->ap_ac[1];
+        dump_scale_factor_ldac(p_ac, p_stream, p_loc);
+        dump_spectrum_ldac(p_ac, p_stream, p_loc);
+        dump_residual_ldac(p_ac, p_stream, p_loc);
 
-    p_ac = p_ab->ap_ac[0];
-    dump_scale_factor_ldac(p_ac, ldac, p_loc);
-    dump_spectrum_ldac(p_ac, ldac, p_loc);
-    dump_residual_ldac(p_ac, ldac, p_loc);
-    p_ac = p_ab->ap_ac[1];
-    dump_scale_factor_ldac(p_ac, ldac, p_loc);
-    dump_spectrum_ldac(p_ac, ldac, p_loc);
-    dump_residual_ldac(p_ac, ldac, p_loc);
+        dump_byte_alignment_ldac(p_stream, p_loc);
 
-    dump_byte_alignment_ldac(ldac, p_loc);
+        p_stream += p_cfg->frame_length + 4;
 
-    dump_frame_header_ldac(p_cfg, ldac, p_loc);
-    dump_band_info_ldac(p_ab, ldac, p_loc);
-    dump_gradient_ldac(p_ab, ldac, p_loc);
+    } while (p_stream - ldac < 660);
 
-    p_ac = p_ab->ap_ac[0];
-    dump_scale_factor_ldac(p_ac, ldac, p_loc);
-    dump_spectrum_ldac(p_ac, ldac, p_loc);
-    dump_residual_ldac(p_ac, ldac, p_loc);
-    p_ac = p_ab->ap_ac[1];
-    dump_scale_factor_ldac(p_ac, ldac, p_loc);
-    dump_spectrum_ldac(p_ac, ldac, p_loc);
-    dump_residual_ldac(p_ac, ldac, p_loc);
-
-    dump_byte_alignment_ldac(ldac, p_loc);
-
-    dump_frame_header_ldac(p_cfg, ldac, p_loc);
-    dump_band_info_ldac(p_ab, ldac, p_loc);
-    dump_gradient_ldac(p_ab, ldac, p_loc);
-
-    p_ac = p_ab->ap_ac[0];
-    dump_scale_factor_ldac(p_ac, ldac, p_loc);
-    dump_spectrum_ldac(p_ac, ldac, p_loc);
-    dump_residual_ldac(p_ac, ldac, p_loc);
-    p_ac = p_ab->ap_ac[1];
-    dump_scale_factor_ldac(p_ac, ldac, p_loc);
-    dump_spectrum_ldac(p_ac, ldac, p_loc);
-    dump_residual_ldac(p_ac, ldac, p_loc);
-
-    dump_byte_alignment_ldac(ldac, p_loc);
-
-    dump_frame_header_ldac(p_cfg, ldac, p_loc);
-    dump_band_info_ldac(p_ab, ldac, p_loc);
-    dump_gradient_ldac(p_ab, ldac, p_loc);
-
-    p_ac = p_ab->ap_ac[0];
-    dump_scale_factor_ldac(p_ac, ldac, p_loc);
-    dump_spectrum_ldac(p_ac, ldac, p_loc);
-    dump_residual_ldac(p_ac, ldac, p_loc);
-    p_ac = p_ab->ap_ac[1];
-    dump_scale_factor_ldac(p_ac, ldac, p_loc);
-    dump_spectrum_ldac(p_ac, ldac, p_loc);
-    dump_residual_ldac(p_ac, ldac, p_loc);
-
-    dump_byte_alignment_ldac(ldac, p_loc);
-
-    *p_loc += 8; // todo why?
-
-    dump_frame_header_ldac(p_cfg, ldac, p_loc);
-    dump_band_info_ldac(p_ab, ldac, p_loc);
-    dump_gradient_ldac(p_ab, ldac, p_loc);
-
-    p_ac = p_ab->ap_ac[0];
-    dump_scale_factor_ldac(p_ac, ldac, p_loc);
-    dump_spectrum_ldac(p_ac, ldac, p_loc);
-    dump_residual_ldac(p_ac, ldac, p_loc);
-    p_ac = p_ab->ap_ac[1];
-    dump_scale_factor_ldac(p_ac, ldac, p_loc);
-    dump_spectrum_ldac(p_ac, ldac, p_loc);
-    dump_residual_ldac(p_ac, ldac, p_loc);
-
-    dump_byte_alignment_ldac(ldac, p_loc);
-
-    dump_frame_header_ldac(p_cfg, ldac, p_loc);
-    dump_band_info_ldac(p_ab, ldac, p_loc);
-    dump_gradient_ldac(p_ab, ldac, p_loc);
-
-    p_ac = p_ab->ap_ac[0];
-    dump_scale_factor_ldac(p_ac, ldac, p_loc);
-    dump_spectrum_ldac(p_ac, ldac, p_loc);
-    dump_residual_ldac(p_ac, ldac, p_loc);
-    p_ac = p_ab->ap_ac[1];
-    dump_scale_factor_ldac(p_ac, ldac, p_loc);
-    dump_spectrum_ldac(p_ac, ldac, p_loc);
-    dump_residual_ldac(p_ac, ldac, p_loc);
-
-
-    printf("\n loc=%d\n", *p_loc / 8);
     return 0;
 }
 
