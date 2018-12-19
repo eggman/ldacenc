@@ -26,12 +26,20 @@
 
 #define LDAC_MAXGRADQU        50
 
+#define LDAC_MAXNADJQUS       32
+
 #define LDAC_MINSFCBLEN_0      3
 #define LDAC_MAXSFCBLEN_0      6
 #define LDAC_MINSFCBLEN_1      2
 #define LDAC_MAXSFCBLEN_1      5
 #define LDAC_MINSFCBLEN_2      2
 #define LDAC_MAXSFCBLEN_2      5
+#define LDAC_MODE_0            0
+#define LDAC_MODE_1            1
+#define LDAC_MODE_2            2
+#define LDAC_MODE_3            3
+
+#define min_ldac(a, b) (((a)<(b)) ? (a) : (b))
 
 typedef float         SCALAR;
 

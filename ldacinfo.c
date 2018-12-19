@@ -270,25 +270,19 @@ void dump_scale_factor_ldac(AC *p_ac, unsigned char *pdata, int *p_loc)
     printf("\n");
 }
 
-void dump_spectrum_ldac(AC *p_ac, unsigned char *pdata, int *p_loc)
+void calculate_bits_audio_class_a_ldac(AC *p_ac, int hqu)
 {
-    int i, iqu, idwl1, idwl2;
-    int hqu = p_ac->p_ab->nqus;
-    int nqus = hqu;
-    int isp;
-    int lsp, hsp;
-    int nsps, wl;
-    int *p_grad, *p_idsf, *p_idwl1, *p_idwl2, *p_tmp;
-
-    printf("SPECTRUM\n");
+    int iqu, idwl1, idwl2;
+    int grad_mode = p_ac->p_ab->grad_mode;
+    int *p_grad, *p_idsf, *p_addwl, *p_idwl1, *p_idwl2;
 
     p_grad = p_ac->p_ab->a_grad;
     p_idsf = p_ac->a_idsf;
+    p_addwl = p_ac->a_addwl;
     p_idwl1 = p_ac->a_idwl1;
     p_idwl2 = p_ac->a_idwl2;
 
-    /* grad_mode == 0 */
-    for (iqu = 0; iqu < hqu; iqu++) {
+    if (grad_mode == LDAC_MODE_0) { 
         for (iqu = 0; iqu < hqu; iqu++) {
             idwl1 = p_idsf[iqu] + p_grad[iqu];
             if (idwl1 < LDAC_MINIDWL1) {
@@ -304,18 +298,96 @@ void dump_spectrum_ldac(AC *p_ac, unsigned char *pdata, int *p_loc)
             }
             p_idwl1[iqu] = idwl1;
             p_idwl2[iqu] = idwl2;
+            //idsp = ga_idsp_ldac[iqu];
+            //nbits += gaa_ndim_wls_ldac[idsp][idwl1] + ga_wl_ldac[idwl2] * ga_nsps_ldac[iqu];
         }
     }
-
-    printf("  a_idwl1 a ");
-    for (iqu = 0; iqu < nqus; iqu++) {
-        printf(" %02X", p_idwl1[iqu]);
+    else if (grad_mode == LDAC_MODE_1) {
+        for (iqu = 0; iqu < hqu; iqu++) {
+            idwl1 = p_idsf[iqu] + p_grad[iqu] + p_addwl[iqu];
+            if (idwl1 > 0) {
+                idwl1 = idwl1 >> 1;
+            }
+            if (idwl1 < LDAC_MINIDWL1) {
+                idwl1 = LDAC_MINIDWL1;
+            }
+            idwl2 = 0;
+            if (idwl1 > LDAC_MAXIDWL1) {
+                idwl2 = idwl1 - LDAC_MAXIDWL1;
+                if (idwl2 > LDAC_MAXIDWL2) {
+                    idwl2 = LDAC_MAXIDWL2;
+                }
+                idwl1 = LDAC_MAXIDWL1;
+            }
+            p_idwl1[iqu] = idwl1;
+            p_idwl2[iqu] = idwl2;
+            //idsp = ga_idsp_ldac[iqu];
+            //nbits += gaa_ndim_wls_ldac[idsp][idwl1] + ga_wl_ldac[idwl2] * ga_nsps_ldac[iqu];
+        }
     }
-    printf("\n");
+    else if (grad_mode == LDAC_MODE_2) {
+        for (iqu = 0; iqu < hqu; iqu++) {
+            idwl1 = p_idsf[iqu] + p_grad[iqu] + p_addwl[iqu];
+            if (idwl1 > 0) {
+                idwl1 = (idwl1*3) >> 3;
+            }
+            if (idwl1 < LDAC_MINIDWL1) {
+                idwl1 = LDAC_MINIDWL1;
+            }
+            idwl2 = 0;
+            if (idwl1 > LDAC_MAXIDWL1) {
+                idwl2 = idwl1 - LDAC_MAXIDWL1;
+                if (idwl2 > LDAC_MAXIDWL2) {
+                    idwl2 = LDAC_MAXIDWL2;
+                }
+                idwl1 = LDAC_MAXIDWL1;
+            }
+            p_idwl1[iqu] = idwl1;
+            p_idwl2[iqu] = idwl2;
+            //idsp = ga_idsp_ldac[iqu];
+            //nbits += gaa_ndim_wls_ldac[idsp][idwl1] + ga_wl_ldac[idwl2] * ga_nsps_ldac[iqu];
+        }
+    }
+    else if (grad_mode == LDAC_MODE_3) {
+        for (iqu = 0; iqu < hqu; iqu++) {
+            idwl1 = p_idsf[iqu] + p_grad[iqu] + p_addwl[iqu];
+            if (idwl1 > 0) {
+                idwl1 = idwl1 >> 2;
+            }
+            if (idwl1 < LDAC_MINIDWL1) {
+                idwl1 = LDAC_MINIDWL1;
+            }
+            idwl2 = 0;
+            if (idwl1 > LDAC_MAXIDWL1) {
+                idwl2 = idwl1 - LDAC_MAXIDWL1;
+                if (idwl2 > LDAC_MAXIDWL2) {
+                    idwl2 = LDAC_MAXIDWL2;
+                }
+                idwl1 = LDAC_MAXIDWL1;
+            }
+            p_idwl1[iqu] = idwl1;
+            p_idwl2[iqu] = idwl2;
+            //idsp = ga_idsp_ldac[iqu];
+            //nbits += gaa_ndim_wls_ldac[idsp][idwl1] + ga_wl_ldac[idwl2] * ga_nsps_ldac[iqu];
+        }
+    }
+    return;
+}
 
-    /* adjust */
+void calculate_bits_audio_class_b_ldac(AC *p_ac)
+{
+    int iqu, idwl1, idwl2;
+    int *p_idwl1, *p_idwl2, *p_tmp;
+    int nqus = min_ldac(LDAC_MAXNADJQUS, p_ac->p_ab->nqus);
+    p_idwl1 = p_ac->a_idwl1;
+    p_idwl2 = p_ac->a_idwl2;
+    p_tmp =  p_ac->a_tmp;
+
+    for (iqu = 0; iqu < nqus; iqu++) {
+        p_tmp[iqu] = p_idwl1[iqu] + p_idwl2[iqu];
+    }
+
     int nadjqus = p_ac->p_ab->nadjqus;
-	p_tmp = p_ac->a_idwl1;
     for (iqu = 0; iqu < nqus; iqu++) {
         idwl1 = p_tmp[iqu];
         if (iqu < nadjqus) {
@@ -332,12 +404,55 @@ void dump_spectrum_ldac(AC *p_ac, unsigned char *pdata, int *p_loc)
         p_idwl1[iqu] = idwl1;
         p_idwl2[iqu] = idwl2;
     }
+    return;
+}
+
+void dump_spectrum_ldac(AC *p_ac, unsigned char *pdata, int *p_loc)
+{
+    int i, iqu, idwl1;
+    int hqu = p_ac->p_ab->nqus;
+    int nqus = hqu;
+    int isp;
+    int lsp, hsp;
+    int nsps, wl;
+    int *p_grad, *p_idsf, *p_idwl1, *p_idwl2, *p_tmp;
+
+    printf("SPECTRUM\n");
+
+    p_grad = p_ac->p_ab->a_grad;
+    p_idsf = p_ac->a_idsf;
+    p_idwl1 = p_ac->a_idwl1;
+    p_idwl2 = p_ac->a_idwl2;
+    p_tmp =  p_ac->a_tmp;
+
+    calculate_bits_audio_class_a_ldac(p_ac, hqu);
+
+    printf("  a_idwl1 a ");
+    for (iqu = 0; iqu < nqus; iqu++) {
+        printf(" %02X", p_idwl1[iqu]);
+    }
+    printf("\n");
+    printf("  a_idwl2 a ");
+    for (iqu = 0; iqu < nqus; iqu++) {
+        printf(" %02X", p_idwl2[iqu]);
+    }
+    printf("\n");
+
+
+    /* adjust */
+    calculate_bits_audio_class_b_ldac(p_ac);
 
     printf("  a_idwl1 b ");
     for (iqu = 0; iqu < nqus; iqu++) {
         printf(" %02X", p_idwl1[iqu]);
     }
     printf("\n");
+    printf("  a_idwl2 b ");
+    for (iqu = 0; iqu < nqus; iqu++) {
+        printf(" %02X", p_idwl2[iqu]);
+    }
+    printf("\n");
+
 
     /* wl */
     int p_wl[LDAC_MAXLSU];
@@ -487,7 +602,18 @@ int main(int argc, char *argv[])
     dump_residual_ldac(p_ac, ldac, p_loc);
     p_ac = p_ab->ap_ac[1];
     dump_scale_factor_ldac(p_ac, ldac, p_loc);
+    dump_spectrum_ldac(p_ac, ldac, p_loc);
+    dump_residual_ldac(p_ac, ldac, p_loc);
 
+    dump_byte_alignment_ldac(ldac, p_loc);
+
+    dump_frame_header_ldac(ldac, p_loc);
+    dump_band_info_ldac(p_ab, ldac, p_loc);
+    dump_gradient_ldac(p_ab, ldac, p_loc);
+
+    p_ac = p_ab->ap_ac[0];
+    dump_scale_factor_ldac(p_ac, ldac, p_loc);
+    dump_spectrum_ldac(p_ac, ldac, p_loc);
 
     return 0;
 }
