@@ -230,7 +230,7 @@ void dump_scale_factor_0_ldac(AC *p_ac, unsigned char *pdata, int *p_loc)
     printf("  VAL0       %02X\n", read_bits(pdata, *p_loc + 10, sfc_bitlen));
     p_ac->a_idsf[0] = read_bits(pdata, *p_loc + 10, sfc_bitlen) + sfc_offset;
 
-    hc_len = dump_ldac_sfhuffman(p_ac, pdata, *p_loc + 10 + sfc_bitlen, ga_hcenc_sf0_ldac[0]);
+    hc_len = dump_ldac_sfhuffman(p_ac, pdata, *p_loc + 10 + sfc_bitlen, ga_hcenc_sf0_ldac[sfc_bitlen - LDAC_MINSFCBLEN_0]);
     *p_loc += 10 + sfc_bitlen + hc_len;
 }
 
@@ -239,9 +239,9 @@ void dump_scale_factor_2_ldac(AC *p_ac, unsigned char *pdata, int *p_loc)
     int sfc_bitlen, hc_len;
 
     printf("  SFCBLEN    %02X\n", read_bits(pdata, *p_loc +  0, 2));
-    sfc_bitlen = 2 + read_bits(pdata, *p_loc +  0, 2);
+    sfc_bitlen = read_bits(pdata, *p_loc +  0, 2);
 
-    hc_len = dump_ldac_sfhuffman(p_ac, pdata, *p_loc + 2, ga_hcenc_sf1_ldac[1]);
+    hc_len = dump_ldac_sfhuffman(p_ac, pdata, *p_loc + 2, ga_hcenc_sf1_ldac[sfc_bitlen]);
     *p_loc += 2 + hc_len;
 }
 
@@ -478,6 +478,16 @@ int main(int argc, char *argv[])
     dump_byte_alignment_ldac(ldac, p_loc);
 
     dump_frame_header_ldac(ldac, p_loc);
+    dump_band_info_ldac(p_ab, ldac, p_loc);
+    dump_gradient_ldac(p_ab, ldac, p_loc);
+
+    p_ac = p_ab->ap_ac[0];
+    dump_scale_factor_ldac(p_ac, ldac, p_loc);
+    dump_spectrum_ldac(p_ac, ldac, p_loc);
+    dump_residual_ldac(p_ac, ldac, p_loc);
+    p_ac = p_ab->ap_ac[1];
+    dump_scale_factor_ldac(p_ac, ldac, p_loc);
+
 
     return 0;
 }
