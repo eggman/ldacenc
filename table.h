@@ -42,6 +42,7 @@
 #define min_ldac(a, b) (((a)<(b)) ? (a) : (b))
 
 typedef float         SCALAR;
+typedef unsigned char STREAM;
 
 /***************************************************************************************************
     Structure Definitions

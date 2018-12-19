@@ -12,14 +12,14 @@ CFG g_cfg;
 AC g_ac0, g_ac1;
 AB g_ab;
 
-int read_bit(unsigned char *pdata, int pos)
+int read_bit(STREAM *pdata, int pos)
 {
     int bytepos = pos / 8;
     int bitpos  = pos % 8;
     return (pdata[bytepos] & (1 << (7 - bitpos))) ? 1 : 0;
 }
 
-int read_bits(unsigned char *pdata, int pos, int nbits)
+int read_bits(STREAM *pdata, int pos, int nbits)
 {
     int tmp = 0;
     int p = pos;
@@ -32,7 +32,7 @@ int read_bits(unsigned char *pdata, int pos, int nbits)
     return tmp;
 }
 
-void dump_frame_header_ldac(CFG *p_cfg, unsigned char *pdata, int *p_loc)
+void dump_frame_header_ldac(CFG *p_cfg, STREAM *pdata, int *p_loc)
 {
     int syncword;
 
@@ -58,7 +58,7 @@ void dump_frame_header_ldac(CFG *p_cfg, unsigned char *pdata, int *p_loc)
     *p_loc += 24;
 }
 
-void dump_band_info_ldac(AB *p_ab, unsigned char *pdata, int *p_loc)
+void dump_band_info_ldac(AB *p_ab, STREAM *pdata, int *p_loc)
 {
     printf("BANDINFO\n");
     printf("  NBAND      %02X\n", read_bits(pdata, *p_loc + 0, 4));
@@ -70,7 +70,7 @@ void dump_band_info_ldac(AB *p_ab, unsigned char *pdata, int *p_loc)
     *p_loc += 5;
 }
 
-void dump_gradient_ldac(AB *p_ab, unsigned char *pdata, int *p_loc)
+void dump_gradient_ldac(AB *p_ab, STREAM *pdata, int *p_loc)
 {
     p_ab->grad_mode = read_bits(pdata, *p_loc + 0, 2);
 
@@ -136,7 +136,7 @@ void dump_gradient_ldac(AB *p_ab, unsigned char *pdata, int *p_loc)
     printf("\n");
 }
 
-int decode_huffman(const HCENC c, unsigned char *pdata, int start_pos)
+int decode_huffman(const HCENC c, STREAM *pdata, int start_pos)
 {
     int pos = start_pos;
     int tmp = 0;
@@ -161,7 +161,7 @@ found:
     return ret;
 }
 
-int dump_ldac_sfhuffman(AC *p_ac, unsigned char *pdata, int pos, const HCENC c)
+int dump_ldac_sfhuffman(AC *p_ac, STREAM *pdata, int pos, const HCENC c)
 {
     int p, count = 1, idx;
     int dif[LDAC_MAXNQUS];
@@ -220,7 +220,7 @@ int dump_ldac_sfhuffman(AC *p_ac, unsigned char *pdata, int pos, const HCENC c)
     return p - pos;
 }
 
-void dump_scale_factor_0_ldac(AC *p_ac, unsigned char *pdata, int *p_loc)
+void dump_scale_factor_0_ldac(AC *p_ac, STREAM *pdata, int *p_loc)
 {
     int sfc_bitlen, sfc_offset, hc_len;
 
@@ -240,7 +240,7 @@ void dump_scale_factor_0_ldac(AC *p_ac, unsigned char *pdata, int *p_loc)
     *p_loc += 10 + sfc_bitlen + hc_len;
 }
 
-void dump_scale_factor_2_ldac(AC *p_ac, unsigned char *pdata, int *p_loc)
+void dump_scale_factor_2_ldac(AC *p_ac, STREAM *pdata, int *p_loc)
 {
     int sfc_bitlen, hc_len;
 
@@ -251,7 +251,7 @@ void dump_scale_factor_2_ldac(AC *p_ac, unsigned char *pdata, int *p_loc)
     *p_loc += 2 + hc_len;
 }
 
-void dump_scale_factor_ldac(AC *p_ac, unsigned char *pdata, int *p_loc)
+void dump_scale_factor_ldac(AC *p_ac, STREAM *pdata, int *p_loc)
 {
     int sfc_mode;
 
@@ -413,7 +413,7 @@ void calculate_bits_audio_class_b_ldac(AC *p_ac)
     return;
 }
 
-void dump_spectrum_ldac(AC *p_ac, unsigned char *pdata, int *p_loc)
+void dump_spectrum_ldac(AC *p_ac, STREAM *pdata, int *p_loc)
 {
     int i, iqu, idwl1;
     int hqu = p_ac->p_ab->nqus;
@@ -506,7 +506,7 @@ void dump_spectrum_ldac(AC *p_ac, unsigned char *pdata, int *p_loc)
     printf("\n\n");
 }
 
-void dump_residual_ldac(AC *p_ac, unsigned char *pdata, int *p_loc)
+void dump_residual_ldac(AC *p_ac, STREAM *pdata, int *p_loc)
 {
     int iqu, isp;
     int lsp, hsp;
