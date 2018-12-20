@@ -722,6 +722,47 @@ void inverse_quant_residual_ldac(AC *p_ac)
     return;
 }
 
+static SCALAR sa_val_ldac[LDAC_MAXNSPS] = {
+    -0.75, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+};
+
+void inverse_norm_spectrum_ldac(AC *p_ac)
+{
+    int iqu, isp;
+    int lsp, hsp;
+    int nqus = p_ac->p_ab->nqus;
+    int idsf;
+    SCALAR tmp;
+    SCALAR *p_spec = p_ac->p_acsub->a_spec;
+
+    for (iqu = 0; iqu < nqus; iqu++) {
+        lsp = ga_isp_ldac[iqu];
+        hsp = ga_isp_ldac[iqu+1];
+
+        idsf = p_ac->a_idsf[iqu];
+
+        if (idsf > 0) {
+            tmp = ga_isf_ldac[idsf];
+            for (isp = lsp; isp < hsp; isp++) {
+                p_spec[isp] /= tmp;
+            }
+        } else {
+            for (isp = lsp; isp < hsp; isp++) {
+                // todo check calc result
+                p_spec[isp] = sa_val_ldac[isp-lsp];
+            }
+
+        }
+    }
+
+    printf("\n dn a_spec ");
+    for (int i = 0; i < 96; i++) {
+        printf(" %e", p_ac->p_acsub->a_spec[i]);
+    }
+    printf("\n");
+    return;
+}
+
 int main(int argc, char *argv[])
 {
     int pos, *p_loc;
@@ -779,6 +820,12 @@ int main(int argc, char *argv[])
         p_ac = p_ab->ap_ac[1];
         inverse_quant_spectrum_ldac(p_ac);
         inverse_quant_residual_ldac(p_ac);
+
+        /* denormalize */
+        p_ac = p_ab->ap_ac[0];
+        inverse_norm_spectrum_ldac(p_ac);
+        p_ac = p_ab->ap_ac[1];
+        inverse_norm_spectrum_ldac(p_ac);
 
    } while (p_stream - ldac < 660);
 
