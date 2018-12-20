@@ -630,7 +630,7 @@ void dump_byte_alignment_ldac(unsigned char *p_stream, int *p_loc)
     return;
 }
 
-void inverse_quant_spectrum_core_ldac(AC *p_ac, int iqu)
+__inline void inverse_quant_spectrum_core_ldac(AC *p_ac, int iqu)
 {
     int i;
     int isp = ga_isp_ldac[iqu];
@@ -670,6 +670,57 @@ void inverse_quant_spectrum_ldac(AC *p_ac)
     return;
 }
 
+__inline void inverse_quant_residual_core_ldac(AC *p_ac, int iqu)
+{
+// todo check calculation result.
+#if 0
+    int i;
+    int isp = ga_isp_ldac[iqu];
+    int nsps = ga_nsps_ldac[iqu];
+    int *p_qspec = p_ac->a_qspec+isp;
+    int *p_rspec = p_ac->a_rspec+isp;
+    SCALAR ldqspec;
+    SCALAR iqf = ga_iqf_ldac[LDAC_MAXIDWL1];
+    SCALAR irqsf = ga_iqf_ldac[p_ac->a_idwl2[iqu]] * ga_irsf_ldac[LDAC_MAXIDWL1]
+            * _scalar(0.996093750);
+    SCALAR *p_nspec = p_ac->p_acsub->a_spec+isp;
+
+    IEEE754_FI fi;
+    const float fc = (float)((1 << 23) + (1 << 22));
+
+    for (i = 0; i < nsps; i++) {
+        ldqspec = p_qspec[i] * iqf;
+        if (p_qspec[i] & 0x8000) {
+            fi.i = 0x4B3F0000 |  (p_rspec[i] & 0xFFFF);
+        } else {
+            fi.i = 0x4B400000 |  (p_rspec[i] & 0xFFFF);
+        }
+        fi.f = fi.f - fc;
+        fi.f = fi.f * irqsf;
+        fi.f = fi.f + ldqspec;
+        p_nspec[i] += fi.f;
+        //ldqspec = p_qspec[i] * iqf;
+        //fi.f = (p_nspec[i] - ldqspec) * rqsf + fc;
+        //p_rspec[i] = (short)fi.i;
+    }
+#endif
+    return;
+}
+
+void inverse_quant_residual_ldac(AC *p_ac)
+{
+    int iqu;
+    int nqus = p_ac->p_ab->nqus;
+    int *p_idwl2 = p_ac->a_idwl2;
+
+    for (iqu = 0; iqu < nqus; iqu++) {
+        if (p_idwl2[iqu] > 0) {
+            inverse_quant_residual_core_ldac(p_ac, iqu);
+        }
+    }
+
+    return;
+}
 
 int main(int argc, char *argv[])
 {
@@ -724,10 +775,12 @@ int main(int argc, char *argv[])
         /* dequant */
         p_ac = p_ab->ap_ac[0];
         inverse_quant_spectrum_ldac(p_ac);
+        inverse_quant_residual_ldac(p_ac);
         p_ac = p_ab->ap_ac[1];
         inverse_quant_spectrum_ldac(p_ac);
+        inverse_quant_residual_ldac(p_ac);
 
-    } while (p_stream - ldac < 660);
+   } while (p_stream - ldac < 660);
 
     return 0;
 }
