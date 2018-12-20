@@ -41,8 +41,15 @@
 
 #define min_ldac(a, b) (((a)<(b)) ? (a) : (b))
 
-typedef float         SCALAR;
 typedef unsigned char STREAM;
+
+typedef float         SCALAR;
+#define _scalar(x) x##f
+typedef union {
+    float f;
+    int i;
+} IEEE754_FI;
+
 
 /***************************************************************************************************
     Structure Definitions
@@ -540,6 +547,18 @@ DECLFUNC HCENC ga_hcenc_sf1_ldac[LDAC_MAXSFCBLEN_2-LDAC_MINSFCBLEN_2+1] = {
     {sa_hc_sf1_blen3_ldac,  8,  3,  7},
     {sa_hc_sf1_blen4_ldac, 16,  4, 15},
     {sa_hc_sf1_blen5_ldac, 32,  5, 31},
+};
+
+/***************************************************************************************************
+    Quantization Tables
+***************************************************************************************************/
+
+/* Inverse of Quantize Factor for Spectrum/Residual Quantization */
+DECLFUNC const SCALAR ga_iqf_ldac[LDAC_NIDWL] = {
+    2.0000000000000000e+00, 6.6666666666666663e-01, 2.8571428571428570e-01, 1.3333333333333333e-01,
+    6.4516129032258063e-02, 3.1746031746031744e-02, 1.5748031496062992e-02, 7.8431372549019607e-03,
+    3.9138943248532287e-03, 1.9550342130987292e-03, 9.7703957010258913e-04, 4.8840048840048840e-04,
+    2.4417043096081065e-04, 1.2207776353537203e-04, 6.1037018951994385e-05, 3.0518043793392844e-05,
 };
 
 

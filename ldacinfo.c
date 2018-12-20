@@ -11,6 +11,7 @@
 CFG g_cfg;
 AC g_ac0, g_ac1;
 AB g_ab;
+ACSUB g_acsub0, g_acsub1;
 
 int read_bit(STREAM *p_stream, int pos)
 {
@@ -629,6 +630,47 @@ void dump_byte_alignment_ldac(unsigned char *p_stream, int *p_loc)
     return;
 }
 
+void inverse_quant_spectrum_core_ldac(AC *p_ac, int iqu)
+{
+    int i;
+    int isp = ga_isp_ldac[iqu];
+    int nsps = ga_nsps_ldac[iqu];
+    int *p_qspec = p_ac->a_qspec+isp;
+    SCALAR iqf = ga_iqf_ldac[p_ac->a_idwl1[iqu]];
+    SCALAR *p_nspec = p_ac->p_acsub->a_spec+isp;
+
+    IEEE754_FI fi;
+    const float fc = (float)((1 << 23) + (1 << 22));
+
+    for (i = 0; i < nsps; i++) {
+        if (p_qspec[i] & 0x8000) {
+            fi.i = 0x4B3F0000 |  (p_qspec[i] & 0xFFFF);
+        } else {
+            fi.i = 0x4B400000 |  (p_qspec[i] & 0xFFFF);
+        }
+        fi.f = (fi.f - fc ) * iqf;
+        p_nspec[i] = fi.f;
+    }
+    return;
+}
+
+void inverse_quant_spectrum_ldac(AC *p_ac)
+{
+    int iqu;
+    int nqus = p_ac->p_ab->nqus;
+
+    for (iqu = 0; iqu < nqus; iqu++) {
+        inverse_quant_spectrum_core_ldac(p_ac, iqu);
+    }
+    printf("\n    a_spec ");
+    for (int i = 0; i < 96; i++) {
+        printf(" %e", p_ac->p_acsub->a_spec[i]);
+    }
+    printf("\n");
+    return;
+}
+
+
 int main(int argc, char *argv[])
 {
     int pos, *p_loc;
@@ -652,8 +694,10 @@ int main(int argc, char *argv[])
     p_ab->ap_ac[1] = &g_ac1;
     p_ab->ap_ac[0]->ich = 0;
     p_ab->ap_ac[0]->p_ab = p_ab;
+    p_ab->ap_ac[0]->p_acsub = &g_acsub0;
     p_ab->ap_ac[1]->ich = 1;
     p_ab->ap_ac[1]->p_ab = p_ab;
+    p_ab->ap_ac[1]->p_acsub = &g_acsub1;
     p_loc = &pos;
     p_stream = ldac;
 
@@ -676,6 +720,12 @@ int main(int argc, char *argv[])
         dump_byte_alignment_ldac(p_stream, p_loc);
 
         p_stream += p_cfg->frame_length + 4;
+
+        /* dequant */
+        p_ac = p_ab->ap_ac[0];
+        inverse_quant_spectrum_ldac(p_ac);
+        p_ac = p_ab->ap_ac[1];
+        inverse_quant_spectrum_ldac(p_ac);
 
     } while (p_stream - ldac < 660);
 
