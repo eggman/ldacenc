@@ -601,9 +601,16 @@ void dump_residual_ldac(AC *p_ac, STREAM *p_stream, int *p_loc)
 
             for (isp = lsp; isp < hsp; isp++) {
                 printf(" %03X", read_bits(p_stream, *p_loc, wl));
+                p_ac->a_rspec[isp] = read_bits_ex(p_stream, *p_loc, wl);
                 *p_loc += wl;
             }
         }
+    }
+    printf("\n");
+
+    printf("    a_rspec");
+    for (int i = 0; i < 96; i++) {
+        printf(" %d", p_ac->a_rspec[i]);
     }
     printf("\n\n");
 }
