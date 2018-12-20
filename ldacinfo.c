@@ -32,6 +32,25 @@ int read_bits(STREAM *p_stream, int pos, int nbits)
     return tmp;
 }
 
+/* fill sign bit */
+int read_bits_ex(STREAM *p_stream, int pos, int nbits)
+{
+    int tmp = 0;
+    int p = pos;
+
+	for (int i = 1; i <= nbits; i++) {
+        tmp = tmp << 1;
+	    tmp += read_bit(p_stream, p);
+        p++;
+    }
+    if (tmp >> (nbits - 1)) {
+        for (int i = nbits; i < 32; i++) {
+            tmp |= 1 << i;
+        }
+    }
+    return tmp;
+}
+
 void dump_frame_header_ldac(CFG *p_cfg, STREAM *p_stream, int *p_loc)
 {
     int syncword;
@@ -416,12 +435,13 @@ void calculate_bits_audio_class_b_ldac(AC *p_ac)
 void dump_spectrum_ldac(AC *p_ac, STREAM *p_stream, int *p_loc)
 {
     int i, iqu, idwl1;
+    int start = *p_loc;
     int hqu = p_ac->p_ab->nqus;
     int nqus = hqu;
     int isp;
     int lsp, hsp;
     int nsps, wl;
-    int *p_grad, *p_idsf, *p_idwl1, *p_idwl2, *p_tmp;
+    int *p_grad, *p_idsf, *p_idwl1, *p_idwl2, *p_tmp, *p_qspec;
 
     printf("SPECTRUM\n");
 
@@ -430,6 +450,7 @@ void dump_spectrum_ldac(AC *p_ac, STREAM *p_stream, int *p_loc)
     p_idwl1 = p_ac->a_idwl1;
     p_idwl2 = p_ac->a_idwl2;
     p_tmp =  p_ac->a_tmp;
+    p_qspec = p_ac->a_qspec;
 
     calculate_bits_audio_class_a_ldac(p_ac, hqu);
 
@@ -495,13 +516,58 @@ void dump_spectrum_ldac(AC *p_ac, STREAM *p_stream, int *p_loc)
     }
     printf("\n");
 
-    // spectrum
     int nsp = j;
-
     printf(" coded spec");
     for (i = 0; i < nsp; i++) {
         printf(" %03X", read_bits(p_stream, *p_loc, p_wl[i]));
         *p_loc += p_wl[i];
+    }
+    printf("\n");
+
+    // spectrum
+    int enc, dec;
+    *p_loc = start;
+    for (iqu = 0; iqu < nqus; iqu++) {
+        lsp = ga_isp_ldac[iqu];
+        hsp = ga_isp_ldac[iqu+1];
+        nsps = ga_nsps_ldac[iqu];
+        idwl1 = p_ac->a_idwl1[iqu];
+        wl = ga_wl_ldac[idwl1];
+
+        if (idwl1 == 1) {
+            isp = lsp;
+
+            if (nsps == 2) {
+                enc = read_bits(p_stream, *p_loc, LDAC_2DIMSPECBITS);
+                *p_loc += LDAC_2DIMSPECBITS;
+                dec = ga_2dimdec_spec_ldac[enc];
+                p_qspec[isp+1] = (dec        & 0x3) - 1;
+                p_qspec[isp  ] = ((dec >> 2) & 0x3) - 1;
+            }
+            else {
+                for (i = 0; i < nsps>>2; i++, isp+=4) {
+                    enc = read_bits(p_stream, *p_loc, LDAC_4DIMSPECBITS);
+                    *p_loc += LDAC_4DIMSPECBITS;
+                    dec = ga_4dimdec_spec_ldac[enc];
+                    p_qspec[isp+3] = (dec        & 0x3) - 1;
+                    p_qspec[isp+2] = ((dec >> 2) & 0x3) - 1;
+                    p_qspec[isp+1] = ((dec >> 4) & 0x3) - 1;
+                    p_qspec[isp  ] = ((dec >> 6) & 0x3) - 1;
+                }
+            }
+        }
+        else {
+            for (isp = lsp; isp < hsp; isp++) {
+                p_qspec[isp] = read_bits_ex(p_stream, *p_loc, wl);
+                *p_loc += wl;
+            }
+        }
+    }
+
+
+    printf("    a_qspec");
+    for (i = 0; i < 96; i++) {
+        printf(" %d", p_qspec[i]);
     }
     printf("\n\n");
 }
