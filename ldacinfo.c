@@ -442,15 +442,12 @@ void dump_spectrum_ldac(AC *p_ac, STREAM *p_stream, int *p_loc)
     int isp;
     int lsp, hsp;
     int nsps, wl;
-    int *p_grad, *p_idsf, *p_idwl1, *p_idwl2, *p_tmp, *p_qspec;
+    int *p_idwl1, *p_idwl2, *p_qspec;
 
     printf("SPECTRUM\n");
 
-    p_grad = p_ac->p_ab->a_grad;
-    p_idsf = p_ac->a_idsf;
     p_idwl1 = p_ac->a_idwl1;
     p_idwl2 = p_ac->a_idwl2;
-    p_tmp =  p_ac->a_tmp;
     p_qspec = p_ac->a_qspec;
 
     calculate_bits_audio_class_a_ldac(p_ac, hqu);
@@ -630,7 +627,7 @@ void dump_byte_alignment_ldac(unsigned char *p_stream, int *p_loc)
     return;
 }
 
-__inline void inverse_quant_spectrum_core_ldac(AC *p_ac, int iqu)
+void inverse_quant_spectrum_core_ldac(AC *p_ac, int iqu)
 {
     int i;
     int isp = ga_isp_ldac[iqu];
@@ -777,7 +774,9 @@ int main(int argc, char *argv[])
         printf("can't open input file\n");
         return -1;
     }
-    fread(ldac, 660, 1, infp);
+    if (660 != fread(ldac, 660, 1, infp) ) {
+        return -1;
+    }
 
     /* minimum initialize */
     p_cfg = &g_cfg;
