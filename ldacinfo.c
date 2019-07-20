@@ -774,7 +774,7 @@ int main(int argc, char *argv[])
         printf("can't open input file\n");
         return -1;
     }
-    if (660 != fread(ldac, 660, 1, infp) ) {
+    if (1 != fread(ldac, 660, 1, infp) ) {
         return -1;
     }
 

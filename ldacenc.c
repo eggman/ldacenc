@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
     }
 
     //skip wav header
-    if (44 != fread(header, 44, 1, infp) ) {
+    if (1 != fread(header, 44, 1, infp) ) {
         return -1;
     }
     
