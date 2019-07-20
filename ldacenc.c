@@ -28,7 +28,9 @@ int main(int argc, char *argv[])
     }
 
     //skip wav header
-    fread(header, 44, 1, infp);
+    if (44 != fread(header, 44, 1, infp) ) {
+        return -1;
+    }
     
     h = ldacBT_get_handle();
     ret = ldacBT_init_handle_encode(h, 679, LDACBT_EQMID_MQ, LDACBT_CHANNEL_MODE_STEREO, LDACBT_SMPL_FMT_S16, 48000);

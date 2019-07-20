@@ -2,7 +2,7 @@
 all:ldacenc ldacinfo
 
 ldacenc:ldacenc.c
-	gcc -O2 -Werror -Ilibldac/inc -o ldacenc ldacenc.c libldac/src/ldaclib.c libldac/src/ldacBT.c
+	gcc -O2 -Werror -Ilibldac/inc -o ldacenc ldacenc.c libldac/src/ldaclib.c libldac/src/ldacBT.c -lm
 
 ldacinfo:ldacinfo.c table.h
 	gcc -O2 -Wall -o ldacinfo ldacinfo.c
