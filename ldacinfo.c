@@ -5,8 +5,8 @@
  * licence: Apache License, Version 2.0
  */
 
-#include <stdio.h>
 #include "table.h"
+#include <stdio.h>
 
 CFG g_cfg;
 AC g_ac0, g_ac1;
@@ -16,7 +16,7 @@ ACSUB g_acsub0, g_acsub1;
 int read_bit(STREAM *p_stream, int pos)
 {
     int bytepos = pos / 8;
-    int bitpos  = pos % 8;
+    int bitpos = pos % 8;
     return (p_stream[bytepos] & (1 << (7 - bitpos))) ? 1 : 0;
 }
 
@@ -25,9 +25,9 @@ int read_bits(STREAM *p_stream, int pos, int nbits)
     int tmp = 0;
     int p = pos;
 
-	for (int i = 1; i <= nbits; i++) {
+    for (int i = 1; i <= nbits; i++) {
         tmp = tmp << 1;
-	    tmp += read_bit(p_stream, p);
+        tmp += read_bit(p_stream, p);
         p++;
     }
     return tmp;
@@ -39,9 +39,9 @@ int read_bits_ex(STREAM *p_stream, int pos, int nbits)
     int tmp = 0;
     int p = pos;
 
-	for (int i = 1; i <= nbits; i++) {
+    for (int i = 1; i <= nbits; i++) {
         tmp = tmp << 1;
-	    tmp += read_bit(p_stream, p);
+        tmp += read_bit(p_stream, p);
         p++;
     }
     if (tmp >> (nbits - 1)) {
@@ -64,14 +64,14 @@ void dump_frame_header_ldac(CFG *p_cfg, STREAM *p_stream, int *p_loc)
 
     printf("HEADER\n");
     printf("  SYNCWORD   %02X\n", syncword);
-    printf("  SAMPLERATE %02X\n", read_bits(p_stream, *p_loc +  8, 3));
+    printf("  SAMPLERATE %02X\n", read_bits(p_stream, *p_loc + 8, 3));
     printf("  CHCONFIG   %02X\n", read_bits(p_stream, *p_loc + 11, 2));
     printf("  FRAMELEN   %02X\n", read_bits(p_stream, *p_loc + 13, 9));
     printf("  FRAMESTAT  %02X\n", read_bits(p_stream, *p_loc + 22, 2));
     printf("\n");
-    p_cfg->syncword     = syncword;
-    p_cfg->smplrate_id  = read_bits(p_stream, *p_loc +  8, 3);
-    p_cfg->chconfig_id  = read_bits(p_stream, *p_loc + 11, 2);
+    p_cfg->syncword = syncword;
+    p_cfg->smplrate_id = read_bits(p_stream, *p_loc + 8, 3);
+    p_cfg->chconfig_id = read_bits(p_stream, *p_loc + 11, 2);
     p_cfg->frame_length = read_bits(p_stream, *p_loc + 13, 9);
     p_cfg->frame_status = read_bits(p_stream, *p_loc + 22, 2);
 
@@ -97,8 +97,8 @@ void dump_gradient_ldac(AB *p_ab, STREAM *p_stream, int *p_loc)
     printf("GRADIENT\n");
     printf("  GRADMODE   %02X\n", read_bits(p_stream, *p_loc + 0, 2));
     if (p_ab->grad_mode == 0) {
-        printf("  GRADQU0_L  %02X\n", read_bits(p_stream, *p_loc +  2, 6));
-        printf("  GRADQU0_H  %02X\n", read_bits(p_stream, *p_loc +  8, 6));
+        printf("  GRADQU0_L  %02X\n", read_bits(p_stream, *p_loc + 2, 6));
+        printf("  GRADQU0_H  %02X\n", read_bits(p_stream, *p_loc + 8, 6));
         printf("  GRADOS_L   %02X\n", read_bits(p_stream, *p_loc + 14, 5));
         printf("  GRADOS_H   %02X\n", read_bits(p_stream, *p_loc + 19, 5));
         printf("  NADJQU     %02X\n", read_bits(p_stream, *p_loc + 24, 5));
@@ -106,8 +106,8 @@ void dump_gradient_ldac(AB *p_ab, STREAM *p_stream, int *p_loc)
 
         int hqu = p_ab->nqus;
         int iqu;
-        int grad_qu_l = read_bits(p_stream, *p_loc +  2, 6);
-        int grad_qu_h = read_bits(p_stream, *p_loc +  8, 6) + 1;
+        int grad_qu_l = read_bits(p_stream, *p_loc + 2, 6);
+        int grad_qu_h = read_bits(p_stream, *p_loc + 8, 6) + 1;
         int grad_os_l = read_bits(p_stream, *p_loc + 14, 5);
         int grad_os_h = read_bits(p_stream, *p_loc + 19, 5);
         int tmp = grad_qu_h - grad_qu_l;
@@ -123,32 +123,30 @@ void dump_gradient_ldac(AB *p_ab, STREAM *p_stream, int *p_loc)
         }
 
         if (tmp > 0) {
-            p_t = gaa_resamp_grad_ldac[tmp-1];
+            p_t = gaa_resamp_grad_ldac[tmp - 1];
 
             tmp = grad_os_h - grad_os_l;
             if (tmp > 0) {
-                tmp = tmp-1;
+                tmp = tmp - 1;
                 for (iqu = grad_qu_l; iqu < grad_qu_h; iqu++) {
                     p_grad[iqu] -= ((*p_t++ * tmp) >> 8) + 1;
                 }
-            }
-            else if (tmp < 0) {
-                tmp = -tmp-1;
+            } else if (tmp < 0) {
+                tmp = -tmp - 1;
                 for (iqu = grad_qu_l; iqu < grad_qu_h; iqu++) {
                     p_grad[iqu] += ((*p_t++ * tmp) >> 8) + 1;
                 }
             }
         }
         printf("  a_grad   ");
-        for (iqu = 0; iqu < hqu; iqu++ ) {
+        for (iqu = 0; iqu < hqu; iqu++) {
             printf(" %d", p_grad[iqu]);
         }
         printf("\n");
         *p_loc += 29;
-
     } else {
-        printf("  GRADQU1    %02X\n", read_bits(p_stream, *p_loc +  2, 5));
-        printf("  GRADOS     %02X\n", read_bits(p_stream, *p_loc +  7, 5));
+        printf("  GRADQU1    %02X\n", read_bits(p_stream, *p_loc + 2, 5));
+        printf("  GRADOS     %02X\n", read_bits(p_stream, *p_loc + 7, 5));
         printf("  NADJQU     %02X\n", read_bits(p_stream, *p_loc + 12, 5));
         p_ab->nadjqus = read_bits(p_stream, *p_loc + 12, 5);
         *p_loc += 17;
@@ -197,7 +195,7 @@ int dump_ldac_sfhuffman(AC *p_ac, STREAM *p_stream, int pos, const HCENC c)
     for (p = pos; count < p_ac->p_ab->nqus;) {
         idx = decode_huffman(c, p_stream, p);
         if (idx >= 0) {
-            if (idx & (c.ncodes>>1)) {
+            if (idx & (c.ncodes >> 1)) {
                 dif[count] = -c.ncodes + idx;
             } else {
                 dif[count] = idx;
@@ -212,7 +210,7 @@ int dump_ldac_sfhuffman(AC *p_ac, STREAM *p_stream, int pos, const HCENC c)
     printf("\n");
 
     /* compute idsf */
-    if(p_ac->sfc_mode == 0) {
+    if (p_ac->sfc_mode == 0) {
         int val0 = p_ac->a_idsf[0];
         int val1;
         const unsigned char *p_tbl;
@@ -244,19 +242,20 @@ void dump_scale_factor_0_ldac(AC *p_ac, STREAM *p_stream, int *p_loc)
 {
     int sfc_bitlen, sfc_offset, hc_len;
 
-    printf("  SFCBLEN    %02X\n", read_bits(p_stream, *p_loc +  0, 2));
-    sfc_bitlen = 3 + read_bits(p_stream, *p_loc +  0, 2);
+    printf("  SFCBLEN    %02X\n", read_bits(p_stream, *p_loc + 0, 2));
+    sfc_bitlen = 3 + read_bits(p_stream, *p_loc + 0, 2);
     p_ac->sfc_bitlen = sfc_bitlen;
-    printf("  IDSF       %02X\n", read_bits(p_stream, *p_loc +  2, 5));
-    sfc_offset = read_bits(p_stream, *p_loc +  2, 5);
+    printf("  IDSF       %02X\n", read_bits(p_stream, *p_loc + 2, 5));
+    sfc_offset = read_bits(p_stream, *p_loc + 2, 5);
     p_ac->sfc_offset = sfc_offset;
-    printf("  SFCWTBL    %02X\n", read_bits(p_stream, *p_loc +  7, 3));
-    p_ac->sfc_weight = read_bits(p_stream, *p_loc +  7, 3);
+    printf("  SFCWTBL    %02X\n", read_bits(p_stream, *p_loc + 7, 3));
+    p_ac->sfc_weight = read_bits(p_stream, *p_loc + 7, 3);
 
     printf("  VAL0       %02X\n", read_bits(p_stream, *p_loc + 10, sfc_bitlen));
     p_ac->a_idsf[0] = read_bits(p_stream, *p_loc + 10, sfc_bitlen) + sfc_offset;
 
-    hc_len = dump_ldac_sfhuffman(p_ac, p_stream, *p_loc + 10 + sfc_bitlen, ga_hcenc_sf0_ldac[sfc_bitlen - LDAC_MINSFCBLEN_0]);
+    hc_len = dump_ldac_sfhuffman(p_ac, p_stream, *p_loc + 10 + sfc_bitlen,
+                                 ga_hcenc_sf0_ldac[sfc_bitlen - LDAC_MINSFCBLEN_0]);
     *p_loc += 10 + sfc_bitlen + hc_len;
 }
 
@@ -264,8 +263,8 @@ void dump_scale_factor_2_ldac(AC *p_ac, STREAM *p_stream, int *p_loc)
 {
     int sfc_bitlen, hc_len;
 
-    printf("  SFCBLEN    %02X\n", read_bits(p_stream, *p_loc +  0, 2));
-    sfc_bitlen = read_bits(p_stream, *p_loc +  0, 2);
+    printf("  SFCBLEN    %02X\n", read_bits(p_stream, *p_loc + 0, 2));
+    sfc_bitlen = read_bits(p_stream, *p_loc + 0, 2);
 
     hc_len = dump_ldac_sfhuffman(p_ac, p_stream, *p_loc + 2, ga_hcenc_sf1_ldac[sfc_bitlen]);
     *p_loc += 2 + hc_len;
@@ -276,7 +275,7 @@ void dump_scale_factor_ldac(AC *p_ac, STREAM *p_stream, int *p_loc)
     int sfc_mode;
 
     printf("SCALEFACTOR\n");
-    sfc_mode = read_bits(p_stream, *p_loc +  0, 1);
+    sfc_mode = read_bits(p_stream, *p_loc + 0, 1);
     printf("  SFCMODE    %02X\n", sfc_mode);
     p_ac->sfc_mode = sfc_mode;
     *p_loc += 1;
@@ -308,7 +307,7 @@ void calculate_bits_audio_class_a_ldac(AC *p_ac, int hqu)
     p_idwl1 = p_ac->a_idwl1;
     p_idwl2 = p_ac->a_idwl2;
 
-    if (grad_mode == LDAC_MODE_0) { 
+    if (grad_mode == LDAC_MODE_0) {
         for (iqu = 0; iqu < hqu; iqu++) {
             idwl1 = p_idsf[iqu] + p_grad[iqu];
             if (idwl1 < LDAC_MINIDWL1) {
@@ -324,11 +323,10 @@ void calculate_bits_audio_class_a_ldac(AC *p_ac, int hqu)
             }
             p_idwl1[iqu] = idwl1;
             p_idwl2[iqu] = idwl2;
-            //idsp = ga_idsp_ldac[iqu];
-            //nbits += gaa_ndim_wls_ldac[idsp][idwl1] + ga_wl_ldac[idwl2] * ga_nsps_ldac[iqu];
+            // idsp = ga_idsp_ldac[iqu];
+            // nbits += gaa_ndim_wls_ldac[idsp][idwl1] + ga_wl_ldac[idwl2] * ga_nsps_ldac[iqu];
         }
-    }
-    else if (grad_mode == LDAC_MODE_1) {
+    } else if (grad_mode == LDAC_MODE_1) {
         for (iqu = 0; iqu < hqu; iqu++) {
             idwl1 = p_idsf[iqu] + p_grad[iqu] + p_addwl[iqu];
             if (idwl1 > 0) {
@@ -347,15 +345,14 @@ void calculate_bits_audio_class_a_ldac(AC *p_ac, int hqu)
             }
             p_idwl1[iqu] = idwl1;
             p_idwl2[iqu] = idwl2;
-            //idsp = ga_idsp_ldac[iqu];
-            //nbits += gaa_ndim_wls_ldac[idsp][idwl1] + ga_wl_ldac[idwl2] * ga_nsps_ldac[iqu];
+            // idsp = ga_idsp_ldac[iqu];
+            // nbits += gaa_ndim_wls_ldac[idsp][idwl1] + ga_wl_ldac[idwl2] * ga_nsps_ldac[iqu];
         }
-    }
-    else if (grad_mode == LDAC_MODE_2) {
+    } else if (grad_mode == LDAC_MODE_2) {
         for (iqu = 0; iqu < hqu; iqu++) {
             idwl1 = p_idsf[iqu] + p_grad[iqu] + p_addwl[iqu];
             if (idwl1 > 0) {
-                idwl1 = (idwl1*3) >> 3;
+                idwl1 = (idwl1 * 3) >> 3;
             }
             if (idwl1 < LDAC_MINIDWL1) {
                 idwl1 = LDAC_MINIDWL1;
@@ -370,11 +367,10 @@ void calculate_bits_audio_class_a_ldac(AC *p_ac, int hqu)
             }
             p_idwl1[iqu] = idwl1;
             p_idwl2[iqu] = idwl2;
-            //idsp = ga_idsp_ldac[iqu];
-            //nbits += gaa_ndim_wls_ldac[idsp][idwl1] + ga_wl_ldac[idwl2] * ga_nsps_ldac[iqu];
+            // idsp = ga_idsp_ldac[iqu];
+            // nbits += gaa_ndim_wls_ldac[idsp][idwl1] + ga_wl_ldac[idwl2] * ga_nsps_ldac[iqu];
         }
-    }
-    else if (grad_mode == LDAC_MODE_3) {
+    } else if (grad_mode == LDAC_MODE_3) {
         for (iqu = 0; iqu < hqu; iqu++) {
             idwl1 = p_idsf[iqu] + p_grad[iqu] + p_addwl[iqu];
             if (idwl1 > 0) {
@@ -393,8 +389,8 @@ void calculate_bits_audio_class_a_ldac(AC *p_ac, int hqu)
             }
             p_idwl1[iqu] = idwl1;
             p_idwl2[iqu] = idwl2;
-            //idsp = ga_idsp_ldac[iqu];
-            //nbits += gaa_ndim_wls_ldac[idsp][idwl1] + ga_wl_ldac[idwl2] * ga_nsps_ldac[iqu];
+            // idsp = ga_idsp_ldac[iqu];
+            // nbits += gaa_ndim_wls_ldac[idsp][idwl1] + ga_wl_ldac[idwl2] * ga_nsps_ldac[iqu];
         }
     }
     return;
@@ -407,7 +403,7 @@ void calculate_bits_audio_class_b_ldac(AC *p_ac)
     int nqus = min_ldac(LDAC_MAXNADJQUS, p_ac->p_ab->nqus);
     p_idwl1 = p_ac->a_idwl1;
     p_idwl2 = p_ac->a_idwl2;
-    p_tmp =  p_ac->a_tmp;
+    p_tmp = p_ac->a_tmp;
 
     for (iqu = 0; iqu < nqus; iqu++) {
         p_tmp[iqu] = p_idwl1[iqu] + p_idwl2[iqu];
@@ -463,7 +459,6 @@ void dump_spectrum_ldac(AC *p_ac, STREAM *p_stream, int *p_loc)
     }
     printf("\n");
 
-
     /* adjust */
     calculate_bits_audio_class_b_ldac(p_ac);
 
@@ -478,14 +473,13 @@ void dump_spectrum_ldac(AC *p_ac, STREAM *p_stream, int *p_loc)
     }
     printf("\n");
 
-
     /* wl */
     int p_wl[LDAC_MAXLSU];
     int j = 0;
     printf("  wl        ");
     for (iqu = 0; iqu < nqus; iqu++) {
         lsp = ga_isp_ldac[iqu];
-        hsp = ga_isp_ldac[iqu+1];
+        hsp = ga_isp_ldac[iqu + 1];
         nsps = ga_nsps_ldac[iqu];
         idwl1 = p_ac->a_idwl1[iqu];
         wl = ga_wl_ldac[idwl1];
@@ -498,10 +492,10 @@ void dump_spectrum_ldac(AC *p_ac, STREAM *p_stream, int *p_loc)
                 p_wl[j] = LDAC_2DIMSPECBITS;
                 j++;
             } else {
-                for (i = 0; i < nsps>>2; i++, isp+=4) {
-                   printf(" %2d", LDAC_4DIMSPECBITS);
-                   p_wl[j] = LDAC_4DIMSPECBITS;
-                   j++;
+                for (i = 0; i<nsps>> 2; i++, isp += 4) {
+                    printf(" %2d", LDAC_4DIMSPECBITS);
+                    p_wl[j] = LDAC_4DIMSPECBITS;
+                    j++;
                 }
             }
         } else {
@@ -527,7 +521,7 @@ void dump_spectrum_ldac(AC *p_ac, STREAM *p_stream, int *p_loc)
     *p_loc = start;
     for (iqu = 0; iqu < nqus; iqu++) {
         lsp = ga_isp_ldac[iqu];
-        hsp = ga_isp_ldac[iqu+1];
+        hsp = ga_isp_ldac[iqu + 1];
         nsps = ga_nsps_ldac[iqu];
         idwl1 = p_ac->a_idwl1[iqu];
         wl = ga_wl_ldac[idwl1];
@@ -539,29 +533,26 @@ void dump_spectrum_ldac(AC *p_ac, STREAM *p_stream, int *p_loc)
                 enc = read_bits(p_stream, *p_loc, LDAC_2DIMSPECBITS);
                 *p_loc += LDAC_2DIMSPECBITS;
                 dec = ga_2dimdec_spec_ldac[enc];
-                p_qspec[isp+1] = (dec        & 0x3) - 1;
-                p_qspec[isp  ] = ((dec >> 2) & 0x3) - 1;
-            }
-            else {
-                for (i = 0; i < nsps>>2; i++, isp+=4) {
+                p_qspec[isp + 1] = (dec & 0x3) - 1;
+                p_qspec[isp] = ((dec >> 2) & 0x3) - 1;
+            } else {
+                for (i = 0; i<nsps>> 2; i++, isp += 4) {
                     enc = read_bits(p_stream, *p_loc, LDAC_4DIMSPECBITS);
                     *p_loc += LDAC_4DIMSPECBITS;
                     dec = ga_4dimdec_spec_ldac[enc];
-                    p_qspec[isp+3] = (dec        & 0x3) - 1;
-                    p_qspec[isp+2] = ((dec >> 2) & 0x3) - 1;
-                    p_qspec[isp+1] = ((dec >> 4) & 0x3) - 1;
-                    p_qspec[isp  ] = ((dec >> 6) & 0x3) - 1;
+                    p_qspec[isp + 3] = (dec & 0x3) - 1;
+                    p_qspec[isp + 2] = ((dec >> 2) & 0x3) - 1;
+                    p_qspec[isp + 1] = ((dec >> 4) & 0x3) - 1;
+                    p_qspec[isp] = ((dec >> 6) & 0x3) - 1;
                 }
             }
-        }
-        else {
+        } else {
             for (isp = lsp; isp < hsp; isp++) {
                 p_qspec[isp] = read_bits_ex(p_stream, *p_loc, wl);
                 *p_loc += wl;
             }
         }
     }
-
 
     printf("    a_qspec");
     for (i = 0; i < 96; i++) {
@@ -594,7 +585,7 @@ void dump_residual_ldac(AC *p_ac, STREAM *p_stream, int *p_loc)
 
         if (idwl2 > 0) {
             lsp = ga_isp_ldac[iqu];
-            hsp = ga_isp_ldac[iqu+1];
+            hsp = ga_isp_ldac[iqu + 1];
             wl = ga_wl_ldac[idwl2];
 
             for (isp = lsp; isp < hsp; isp++) {
@@ -632,20 +623,20 @@ void inverse_quant_spectrum_core_ldac(AC *p_ac, int iqu)
     int i;
     int isp = ga_isp_ldac[iqu];
     int nsps = ga_nsps_ldac[iqu];
-    int *p_qspec = p_ac->a_qspec+isp;
+    int *p_qspec = p_ac->a_qspec + isp;
     SCALAR iqf = ga_iqf_ldac[p_ac->a_idwl1[iqu]];
-    SCALAR *p_nspec = p_ac->p_acsub->a_spec+isp;
+    SCALAR *p_nspec = p_ac->p_acsub->a_spec + isp;
 
     IEEE754_FI fi;
     const float fc = (float)((1 << 23) + (1 << 22));
 
     for (i = 0; i < nsps; i++) {
         if (p_qspec[i] & 0x8000) {
-            fi.i = 0x4B3F0000 |  (p_qspec[i] & 0xFFFF);
+            fi.i = 0x4B3F0000 | (p_qspec[i] & 0xFFFF);
         } else {
-            fi.i = 0x4B400000 |  (p_qspec[i] & 0xFFFF);
+            fi.i = 0x4B400000 | (p_qspec[i] & 0xFFFF);
         }
-        fi.f = (fi.f - fc ) * iqf;
+        fi.f = (fi.f - fc) * iqf;
         p_nspec[i] = fi.f;
     }
     return;
@@ -734,7 +725,7 @@ void inverse_norm_spectrum_ldac(AC *p_ac)
 
     for (iqu = 0; iqu < nqus; iqu++) {
         lsp = ga_isp_ldac[iqu];
-        hsp = ga_isp_ldac[iqu+1];
+        hsp = ga_isp_ldac[iqu + 1];
 
         idsf = p_ac->a_idsf[iqu];
 
@@ -746,9 +737,8 @@ void inverse_norm_spectrum_ldac(AC *p_ac)
         } else {
             for (isp = lsp; isp < hsp; isp++) {
                 // todo check calc result
-                p_spec[isp] = sa_val_ldac[isp-lsp];
+                p_spec[isp] = sa_val_ldac[isp - lsp];
             }
-
         }
     }
 
@@ -770,11 +760,11 @@ int main(int argc, char *argv[])
     AB *p_ab;
     AC *p_ac;
 
-    if ((infp = fopen(argv[1], "r"))==NULL) {
+    if ((infp = fopen(argv[1], "r")) == NULL) {
         printf("can't open input file\n");
         return -1;
     }
-    if (1 != fread(ldac, 660, 1, infp) ) {
+    if (1 != fread(ldac, 660, 1, infp)) {
         return -1;
     }
 
@@ -826,8 +816,7 @@ int main(int argc, char *argv[])
         p_ac = p_ab->ap_ac[1];
         inverse_norm_spectrum_ldac(p_ac);
 
-   } while (p_stream - ldac < 660);
+    } while (p_stream - ldac < 660);
 
     return 0;
 }
-
