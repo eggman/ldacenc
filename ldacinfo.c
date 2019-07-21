@@ -651,7 +651,7 @@ void inverse_quant_spectrum_ldac(AC *p_ac)
     for (iqu = 0; iqu < nqus; iqu++) {
         inverse_quant_spectrum_core_ldac(p_ac, iqu);
     }
-    printf("\n    a_spec ");
+    printf("\n    a_spec[%d] ", p_ac->ich);
     for (int i = 0; i < 96; i++) {
         printf(" %e", p_ac->p_acsub->a_spec[i]);
     }
@@ -743,7 +743,7 @@ void inverse_norm_spectrum_ldac(AC *p_ac)
         }
     }
 
-    printf("\n dn a_spec ");
+    printf("\n dn a_spec[%d] ", p_ac->ich);
     for (int i = 0; i < 96; i++) {
         printf(" %e", p_ac->p_acsub->a_spec[i]);
     }
