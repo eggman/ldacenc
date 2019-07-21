@@ -7,11 +7,12 @@
 
 #include "table.h"
 #include <stdio.h>
+#include <string.h>
 
-CFG g_cfg;                   // store config in LDAC frame header
-AB g_ab;                     // store Audio Block
-AC g_ac0, g_ac1;             // store Audio Channel
-ACSUB g_acsub0, g_acsub1;    // store Audio Channel Sub
+CFG g_cfg;                // store config in LDAC frame header
+AB g_ab;                  // store Audio Block
+AC g_ac0, g_ac1;          // store Audio Channel
+ACSUB g_acsub0, g_acsub1; // store Audio Channel Sub
 
 int read_bit(STREAM *p_stream, int pos)
 {
@@ -751,6 +752,30 @@ void inverse_norm_spectrum_ldac(AC *p_ac)
     return;
 }
 
+/* IMDCT from a_spec to a_time */
+/* fixed nlnn = 7 , 2~7 = 128 samples */
+void inverse_mdct_ldac(AC *p_ac)
+{
+    int i;
+    int nlnn = 7;
+    int nsmpl = 1 << nlnn;
+    SCALAR a_work[LDAC_MAXLSU];
+    SCALAR *p_work = a_work;
+    SCALAR *p_time = p_ac->p_acsub->a_time;
+
+    memset(p_work, 0, sizeof(a_work));
+
+    // Butterfly
+
+    // DeWindowing
+    for (i = 0; i < nsmpl / 2; i++) {
+        p_time[i] = p_work[3 * nsmpl / 2 - 1 - i];
+        p_time[nsmpl / 2 + i] = p_work[i];
+    }
+
+    return;
+}
+
 /*
  * read 660 bytes from LDAC file.
  * dump LDAC info.
@@ -790,7 +815,7 @@ int main(int argc, char *argv[])
     do {
         *p_loc = 0;
 
-	/* read data and dump */
+        /* read data and dump */
         dump_frame_header_ldac(p_cfg, p_stream, p_loc);
         dump_band_info_ldac(p_ab, p_stream, p_loc);
         dump_gradient_ldac(p_ab, p_stream, p_loc);
@@ -820,7 +845,11 @@ int main(int argc, char *argv[])
         p_ac = p_ab->ap_ac[1];
         inverse_norm_spectrum_ldac(p_ac);
 
-	// set next frame start pointer : frame length + frame header length;
+        /* IMDCT */
+        p_ac = p_ab->ap_ac[0];
+        inverse_mdct_ldac(p_ac);
+
+        // set next frame start pointer : frame length + frame header length;
         p_stream += p_cfg->frame_length + 4;
 
     } while (p_stream - ldac < 660);
