@@ -69,7 +69,6 @@ void dump_frame_header_ldac(CFG *p_cfg, STREAM *p_stream, int *p_loc)
     printf("  CHCONFIG   %02X\n", read_bits(p_stream, *p_loc + 11, 2));
     printf("  FRAMELEN   %02X\n", read_bits(p_stream, *p_loc + 13, 9));
     printf("  FRAMESTAT  %02X\n", read_bits(p_stream, *p_loc + 22, 2));
-    printf("\n");
     p_cfg->syncword = syncword;
     p_cfg->smplrate_id = read_bits(p_stream, *p_loc + 8, 3);
     p_cfg->chconfig_id = read_bits(p_stream, *p_loc + 11, 2);
@@ -86,7 +85,6 @@ void dump_band_info_ldac(AB *p_ab, STREAM *p_stream, int *p_loc)
     p_ab->nbands = 2 + read_bits(p_stream, *p_loc + 0, 4);
     p_ab->nqus = ga_nqus_ldac[p_ab->nbands];
     printf("  FLAG       %02X\n", read_bits(p_stream, *p_loc + 4, 1));
-    printf("\n");
 
     *p_loc += 5;
 }
@@ -152,7 +150,6 @@ void dump_gradient_ldac(AB *p_ab, STREAM *p_stream, int *p_loc)
         p_ab->nadjqus = read_bits(p_stream, *p_loc + 12, 5);
         *p_loc += 17;
     }
-    printf("\n");
 }
 
 int decode_huffman(const HCENC c, STREAM *p_stream, int start_pos)
@@ -293,7 +290,6 @@ void dump_scale_factor_ldac(AC *p_ac, STREAM *p_stream, int *p_loc)
             dump_scale_factor_2_ldac(p_ac, p_stream, p_loc);
         }
     }
-    printf("\n");
 }
 
 void calculate_bits_audio_class_a_ldac(AC *p_ac, int hqu)
@@ -559,7 +555,7 @@ void dump_spectrum_ldac(AC *p_ac, STREAM *p_stream, int *p_loc)
     for (i = 0; i < 96; i++) {
         printf(" %d", p_qspec[i]);
     }
-    printf("\n\n");
+    printf("\n");
 }
 
 void dump_residual_ldac(AC *p_ac, STREAM *p_stream, int *p_loc)
@@ -602,7 +598,7 @@ void dump_residual_ldac(AC *p_ac, STREAM *p_stream, int *p_loc)
     for (int i = 0; i < 96; i++) {
         printf(" %d", p_ac->a_rspec[i]);
     }
-    printf("\n\n");
+    printf("\n");
 }
 
 /* skip padding bits */
@@ -613,7 +609,7 @@ void dump_byte_alignment_ldac(int *p_loc)
     nbits_padding = ((*p_loc + LDAC_BYTESIZE - 1) / LDAC_BYTESIZE) * LDAC_BYTESIZE - *p_loc;
 
     if (nbits_padding > 0) {
-        printf("PADDING %d bits\n\n", nbits_padding);
+        printf("PADDING %d bits\n", nbits_padding);
         *p_loc += nbits_padding;
     }
 
@@ -652,7 +648,7 @@ void inverse_quant_spectrum_ldac(AC *p_ac)
     for (iqu = 0; iqu < nqus; iqu++) {
         inverse_quant_spectrum_core_ldac(p_ac, iqu);
     }
-    printf("\n    a_spec[%d] ", p_ac->ich);
+    printf("    a_spec[%d] ", p_ac->ich);
     for (int i = 0; i < 96; i++) {
         printf(" %e", p_ac->p_acsub->a_spec[i]);
     }
@@ -744,7 +740,7 @@ void inverse_norm_spectrum_ldac(AC *p_ac)
         }
     }
 
-    printf("\n dn a_spec[%d] ", p_ac->ich);
+    printf(" dn a_spec[%d] ", p_ac->ich);
     for (int i = 0; i < 96; i++) {
         printf(" %e", p_ac->p_acsub->a_spec[i]);
     }
@@ -831,7 +827,7 @@ int main(int argc, char *argv[])
 
         dump_byte_alignment_ldac(p_loc);
 
-        /* each channel dequant */
+        /* dequantize each channel */
         p_ac = p_ab->ap_ac[0];
         inverse_quant_spectrum_ldac(p_ac);
         inverse_quant_residual_ldac(p_ac);
@@ -839,7 +835,7 @@ int main(int argc, char *argv[])
         inverse_quant_spectrum_ldac(p_ac);
         inverse_quant_residual_ldac(p_ac);
 
-        /* each channel denormalize */
+        /* denormalize each channel */
         p_ac = p_ab->ap_ac[0];
         inverse_norm_spectrum_ldac(p_ac);
         p_ac = p_ab->ap_ac[1];
@@ -849,7 +845,7 @@ int main(int argc, char *argv[])
         p_ac = p_ab->ap_ac[0];
         inverse_mdct_ldac(p_ac);
 
-        // set next frame start pointer : frame length + frame header length;
+        /* set next frame start pointer : frame length + frame header length */
         p_stream += p_cfg->frame_length + 4;
 
     } while (p_stream - ldac < 660);
